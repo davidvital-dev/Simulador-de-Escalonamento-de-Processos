@@ -44,7 +44,7 @@ src/schedulers/      Algoritmos de escalonamento
 scripts/             Execução em lote, consolidação e gráficos
 tests/               Testes pequenos e reproduzíveis
 results/             Resultados gerados (CSV/gráficos)
-docs/                Prompts e decisões técnicas da equipe
+docs/                Decisões técnicas e planejamento da equipe
 ```
 
 ## Responsabilidades principais
@@ -76,17 +76,19 @@ Limpeza:
 make clean
 ```
 
-## Convenções sugeridas — ainda devem ser confirmadas pela equipe
+## Convenções técnicas definidas
 
-Estas decisões são sugestões internas e não requisitos do enunciado:
+As decisões detalhadas estão em `docs/decisoes-tecnicas.md`.
 
-- simulação por tempo discreto;
+- tempo discreto;
 - prioridade `0` como maior prioridade;
-- E/S paralela no primeiro modelo;
-- custo inicial de troca de contexto: `2` ticks, configurável;
-- quantum inicial do Round Robin: `4` ticks, configurável.
-
-Antes de implementar, registrar as decisões finais em `docs/decisoes-tecnicas.md`.
+- processos modelados por rajadas CPU/E/S;
+- chegadas geradas pela seed;
+- E/S paralela, sem fila de dispositivo no modelo principal;
+- custo de troca de contexto de `2` ticks, configurável;
+- sem custo ao sair da CPU ociosa;
+- quantum principal do Round Robin de `4` ticks, configurável;
+- índice de Jain calculado internamente entre `0` e `1`.
 
 ## Regra de integração
 
