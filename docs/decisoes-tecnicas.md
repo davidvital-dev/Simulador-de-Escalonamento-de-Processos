@@ -150,7 +150,7 @@ A própria ordem da fila circular determina o próximo processo. Novas chegadas,
 ### Prioridade não preemptiva
 
 1. menor valor numérico de prioridade;
-2. maior tempo de espera / quem entrou primeiro na fila de prontos;
+2. quem entrou primeiro na fila de prontos;
 3. menor PID.
 
 A chegada de um processo mais prioritário não interrompe o processo atualmente executando.
