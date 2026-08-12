@@ -8,13 +8,17 @@ WORKLOAD_BURSTS_TEST := $(BUILD_DIR)/tests/test_workload_bursts
 WORKLOAD_SCENARIOS_TEST := $(BUILD_DIR)/tests/test_workload_scenarios
 WORKLOAD_CONFIG_TEST := $(BUILD_DIR)/tests/test_workload_config
 WORKLOAD_DEBUG_TEST := $(BUILD_DIR)/tests/test_workload_debug
+PROCESS_RUNTIME_TEST := $(BUILD_DIR)/tests/test_process_runtime
+SIMULATOR_STATES_TEST := $(BUILD_DIR)/tests/test_simulator_states
+SIMULATOR_CONTEXT_TEST := $(BUILD_DIR)/tests/test_simulator_context
 
 SOURCES := $(wildcard src/*.c) $(wildcard src/schedulers/*.c)
 OBJECTS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SOURCES))
 
 .PHONY: all clean run test-workload-determinism test-workload-bursts \
 	test-workload-scenarios test-workload-config test-workload-debug \
-	test-experiment-seeds test-workload test
+	test-experiment-seeds test-workload test-process-runtime \
+	test-simulator-states test-simulator-context test-simulator test
 
 all: $(TARGET)
 
@@ -29,7 +33,7 @@ $(BUILD_DIR)/%.o: %.c
 run: $(TARGET)
 	./$(TARGET)
 
-test: test-workload
+test: test-workload test-simulator
 
 test-workload: test-experiment-seeds test-workload-determinism \
 	test-workload-bursts test-workload-scenarios test-workload-config \
@@ -72,6 +76,29 @@ $(WORKLOAD_DEBUG_TEST): tests/test_workload_debug.c src/workload.c include/workl
 
 test-experiment-seeds:
 	$(PYTHON) tests/test_experiment_seeds.py
+
+test-process-runtime: $(PROCESS_RUNTIME_TEST)
+	./$(PROCESS_RUNTIME_TEST)
+
+$(PROCESS_RUNTIME_TEST): tests/test_process_runtime.c src/process.c include/process.h
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) tests/test_process_runtime.c src/process.c -o $@
+
+test-simulator-states: $(SIMULATOR_STATES_TEST)
+	./$(SIMULATOR_STATES_TEST)
+
+$(SIMULATOR_STATES_TEST): tests/test_simulator_states.c src/simulator.c src/process.c include/simulator.h include/scheduler.h include/process.h
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) tests/test_simulator_states.c src/simulator.c src/process.c -o $@
+
+test-simulator-context: $(SIMULATOR_CONTEXT_TEST)
+	./$(SIMULATOR_CONTEXT_TEST)
+
+$(SIMULATOR_CONTEXT_TEST): tests/test_simulator_context.c src/simulator.c src/process.c include/simulator.h include/scheduler.h include/process.h
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) tests/test_simulator_context.c src/simulator.c src/process.c -o $@
+
+test-simulator: test-process-runtime test-simulator-states test-simulator-context
 
 clean:
 	rm -rf $(BUILD_DIR)
