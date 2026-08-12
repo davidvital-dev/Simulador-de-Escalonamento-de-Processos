@@ -15,3 +15,51 @@ Casos mínimos:
 - prioridade não preemptiva;
 - determinismo da seed;
 - métricas calculadas à mão.
+
+## Teste do gerador de cargas
+
+Para executar toda a suíte do gerador:
+
+```bash
+make test-workload
+```
+
+Esse alvo cobre as 100 seeds nos quatro cenários, estrutura das rajadas, perfis
+experimentais, configurações personalizadas, impressão de debug e sanidade da
+lista de seeds.
+
+Para verificar o determinismo nos quatro cenários:
+
+```bash
+make test-workload-determinism
+```
+
+Para verificar PID, chegada, prioridade e sequências de rajadas:
+
+```bash
+make test-workload-bursts
+```
+
+Para verificar se os quatro perfis experimentais são distintos e coerentes:
+
+```bash
+make test-workload-scenarios
+```
+
+Para verificar configurações personalizadas e configurações inválidas:
+
+```bash
+make test-workload-config
+```
+
+Para verificar a impressão de depuração de cargas pequenas:
+
+```bash
+make test-workload-debug
+```
+
+Para verificar a lista fixa de 100 seeds experimentais:
+
+```bash
+make test-experiment-seeds
+```
