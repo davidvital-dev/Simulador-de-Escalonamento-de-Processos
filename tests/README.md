@@ -72,7 +72,7 @@ Para executar a suíte do motor:
 make test-simulator
 ```
 
-Ela é dividida em três grupos.
+Ela cobre quatro grupos.
 
 ### Runtime e cópia profunda
 
@@ -100,6 +100,16 @@ make test-simulator-context
 
 Valida o custo principal de 2 ticks, ausência de custo em `idle -> processo` e
 o contrato de preempção usado por políticas como Round Robin.
+
+### Integração com o gerador
+
+```bash
+make test-simulator-workload
+```
+
+Gera 1.000 processos em cada um dos quatro cenários, cria uma cópia profunda da
+carga e verifica se o motor leva todos os processos até `FINISHED` sem alterar
+os valores originais das rajadas.
 
 ## Suíte completa
 
