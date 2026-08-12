@@ -15,3 +15,11 @@ Casos mínimos:
 - prioridade não preemptiva;
 - determinismo da seed;
 - métricas calculadas à mão.
+
+## Teste do gerador de cargas
+
+Para verificar o determinismo nos quatro cenários:
+
+```bash
+make test-workload-determinism
+```
