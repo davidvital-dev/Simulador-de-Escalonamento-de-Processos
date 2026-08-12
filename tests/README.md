@@ -29,3 +29,9 @@ Para verificar PID, chegada, prioridade e sequências de rajadas:
 ```bash
 make test-workload-bursts
 ```
+
+Para verificar se os quatro perfis experimentais são distintos e coerentes:
+
+```bash
+make test-workload-scenarios
+```
