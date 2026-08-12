@@ -34,13 +34,10 @@ typedef struct {
 
     /*
      * Chamado apenas depois de um tick de CPU que nao terminou a rajada.
-     * A fila pronta tambem e fornecida para permitir politicas preemptivas
-     * que dependam de concorrentes atuais. Politicas nao preemptivas podem
-     * deixar este callback como NULL.
+     * E suficiente para politicas de fatia de tempo, como Round Robin.
+     * Politicas nao preemptivas podem deixar este callback como NULL.
      */
     bool (*should_preempt)(const SchedulerProcessView *running,
-                           const SchedulerProcessView *ready,
-                           size_t ready_count,
                            int slice_ticks,
                            int current_time,
                            void *context);
