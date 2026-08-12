@@ -12,6 +12,30 @@ typedef struct {
     size_t capacity;
 } ReadyQueue;
 
+typedef struct {
+    size_t process_index;
+    int arrival_time;
+    int pid;
+} ArrivalEvent;
+
+typedef struct {
+    ArrivalEvent *items;
+    size_t count;
+    size_t next;
+} ArrivalQueue;
+
+typedef struct {
+    size_t process_index;
+    int completion_time;
+    int pid;
+} BlockedEvent;
+
+typedef struct {
+    BlockedEvent *items;
+    size_t count;
+    size_t capacity;
+} BlockedHeap;
+
 static bool process_definition_is_valid(const Process *process) {
     size_t index;
 
@@ -98,6 +122,161 @@ static size_t ready_queue_remove_at(ReadyQueue *queue, size_t position) {
     return selected;
 }
 
+static int compare_arrivals(const void *left_pointer, const void *right_pointer) {
+    const ArrivalEvent *left = left_pointer;
+    const ArrivalEvent *right = right_pointer;
+
+    if (left->arrival_time != right->arrival_time) {
+        return left->arrival_time < right->arrival_time ? -1 : 1;
+    }
+    if (left->pid != right->pid) {
+        return left->pid < right->pid ? -1 : 1;
+    }
+    if (left->process_index == right->process_index) {
+        return 0;
+    }
+    return left->process_index < right->process_index ? -1 : 1;
+}
+
+static bool arrival_queue_init(ArrivalQueue *arrivals,
+                               const Process *processes,
+                               size_t process_count) {
+    size_t index;
+
+    if (arrivals == NULL || processes == NULL || process_count == 0 ||
+        process_count > SIZE_MAX / sizeof(*arrivals->items)) {
+        return false;
+    }
+
+    arrivals->items = malloc(process_count * sizeof(*arrivals->items));
+    if (arrivals->items == NULL) {
+        return false;
+    }
+
+    arrivals->count = process_count;
+    arrivals->next = 0;
+    for (index = 0; index < process_count; ++index) {
+        arrivals->items[index] = (ArrivalEvent) {
+            .process_index = index,
+            .arrival_time = processes[index].arrival_time,
+            .pid = processes[index].pid
+        };
+    }
+
+    qsort(arrivals->items, arrivals->count, sizeof(*arrivals->items),
+          compare_arrivals);
+    return true;
+}
+
+static void arrival_queue_destroy(ArrivalQueue *arrivals) {
+    if (arrivals == NULL) {
+        return;
+    }
+
+    free(arrivals->items);
+    *arrivals = (ArrivalQueue) {0};
+}
+
+static bool blocked_event_precedes(BlockedEvent left, BlockedEvent right) {
+    if (left.completion_time != right.completion_time) {
+        return left.completion_time < right.completion_time;
+    }
+    if (left.pid != right.pid) {
+        return left.pid < right.pid;
+    }
+    return left.process_index < right.process_index;
+}
+
+static bool blocked_heap_init(BlockedHeap *heap, size_t capacity) {
+    if (heap == NULL || capacity == 0 ||
+        capacity > SIZE_MAX / sizeof(*heap->items)) {
+        return false;
+    }
+
+    heap->items = malloc(capacity * sizeof(*heap->items));
+    if (heap->items == NULL) {
+        return false;
+    }
+    heap->count = 0;
+    heap->capacity = capacity;
+    return true;
+}
+
+static void blocked_heap_destroy(BlockedHeap *heap) {
+    if (heap == NULL) {
+        return;
+    }
+
+    free(heap->items);
+    *heap = (BlockedHeap) {0};
+}
+
+static bool blocked_heap_push(BlockedHeap *heap, BlockedEvent event) {
+    size_t index;
+
+    if (heap == NULL || heap->items == NULL || heap->count >= heap->capacity) {
+        return false;
+    }
+
+    index = heap->count++;
+    heap->items[index] = event;
+    while (index > 0) {
+        const size_t parent = (index - 1) / 2;
+        BlockedEvent temporary;
+
+        if (!blocked_event_precedes(heap->items[index], heap->items[parent])) {
+            break;
+        }
+        temporary = heap->items[parent];
+        heap->items[parent] = heap->items[index];
+        heap->items[index] = temporary;
+        index = parent;
+    }
+
+    return true;
+}
+
+static bool blocked_heap_pop(BlockedHeap *heap, BlockedEvent *event) {
+    size_t index = 0;
+
+    if (heap == NULL || event == NULL || heap->count == 0) {
+        return false;
+    }
+
+    *event = heap->items[0];
+    --heap->count;
+    if (heap->count == 0) {
+        return true;
+    }
+
+    heap->items[0] = heap->items[heap->count];
+    while (true) {
+        const size_t left = index * 2 + 1;
+        const size_t right = left + 1;
+        size_t smallest = index;
+        BlockedEvent temporary;
+
+        if (left < heap->count &&
+            blocked_event_precedes(heap->items[left], heap->items[smallest])) {
+            smallest = left;
+        }
+        if (right < heap->count &&
+            blocked_event_precedes(heap->items[right], heap->items[smallest])) {
+            smallest = right;
+        }
+        if (smallest == index) {
+            break;
+        }
+
+        temporary = heap->items[index];
+        heap->items[index] = heap->items[smallest];
+        heap->items[smallest] = temporary;
+        index = smallest;
+    }
+
+    return true;
+}
+
 static SchedulerProcessView process_view(const Process *process,
                                          size_t process_index) {
     return (SchedulerProcessView) {
@@ -149,63 +328,62 @@ static void debug_log(const SimulationConfig *config, const char *format, ...) {
 }
 
 static bool admit_arrivals(Process *processes,
-                           size_t process_count,
+                           ArrivalQueue *arrivals,
                            ReadyQueue *ready,
                            int current_time,
                            const SimulationConfig *config) {
-    size_t index;
+    while (arrivals->next < arrivals->count &&
+           arrivals->items[arrivals->next].arrival_time <= current_time) {
+        const ArrivalEvent event = arrivals->items[arrivals->next++];
+        Process *process = &processes[event.process_index];
 
-    for (index = 0; index < process_count; ++index) {
-        Process *process = &processes[index];
-        if (process->state == PROCESS_NEW &&
-            process->arrival_time <= current_time) {
-            process->state = PROCESS_READY;
-            process->ready_since = current_time;
-            if (!ready_queue_push(ready, index)) {
-                return false;
-            }
-            debug_log(config, "[t=%d] PID %d: NEW -> READY\n",
-                      current_time, process->pid);
+        if (process->state != PROCESS_NEW) {
+            return false;
         }
+        process->state = PROCESS_READY;
+        process->ready_since = event.arrival_time;
+        if (!ready_queue_push(ready, event.process_index)) {
+            return false;
+        }
+        debug_log(config, "[t=%d] PID %d: NEW -> READY\n",
+                  current_time, process->pid);
     }
 
     return true;
 }
 
 static bool complete_io(Process *processes,
-                        size_t process_count,
+                        BlockedHeap *blocked,
                         ReadyQueue *ready,
                         int current_time,
                         const SimulationConfig *config) {
-    size_t index;
-
-    for (index = 0; index < process_count; ++index) {
-        Process *process = &processes[index];
+    while (blocked->count > 0 &&
+           blocked->items[0].completion_time <= current_time) {
+        BlockedEvent event;
+        Process *process;
         Burst *io_burst;
 
-        if (process->state != PROCESS_BLOCKED) {
-            continue;
+        if (!blocked_heap_pop(blocked, &event)) {
+            return false;
         }
-        if (process->current_burst_index >= process->burst_count) {
+        process = &processes[event.process_index];
+        if (process->state != PROCESS_BLOCKED ||
+            process->current_burst_index >= process->burst_count) {
             return false;
         }
 
         io_burst = &process->bursts[process->current_burst_index];
-        if (io_burst->type != BURST_IO || io_burst->remaining_time < 0) {
-            return false;
-        }
-        if (io_burst->remaining_time > 0) {
-            continue;
-        }
-        if (process->current_burst_index + 1 >= process->burst_count ||
+        if (io_burst->type != BURST_IO ||
+            process->current_burst_index + 1 >= process->burst_count ||
             process->bursts[process->current_burst_index + 1].type != BURST_CPU) {
             return false;
         }
 
+        io_burst->remaining_time = 0;
         ++process->current_burst_index;
         process->state = PROCESS_READY;
-        process->ready_since = current_time;
-        if (!ready_queue_push(ready, index)) {
+        process->ready_since = event.completion_time;
+        if (!ready_queue_push(ready, event.process_index)) {
             return false;
         }
         debug_log(config, "[t=%d] PID %d: BLOCKED -> READY\n",
@@ -215,28 +393,15 @@ static bool complete_io(Process *processes,
     return true;
 }
 
-static bool progress_blocked_io(Process *processes, size_t process_count) {
-    size_t index;
-
-    for (index = 0; index < process_count; ++index) {
-        Process *process = &processes[index];
-        Burst *burst;
-
-        if (process->state != PROCESS_BLOCKED) {
-            continue;
-        }
-        if (process->current_burst_index >= process->burst_count) {
-            return false;
-        }
-
-        burst = &process->bursts[process->current_burst_index];
-        if (burst->type != BURST_IO || burst->remaining_time <= 0) {
-            return false;
-        }
-        --burst->remaining_time;
-    }
-
-    return true;
+static bool process_system_events(Process *processes,
+                                  ArrivalQueue *arrivals,
+                                  BlockedHeap *blocked,
+                                  ReadyQueue *ready,
+                                  int current_time,
+                                  const SimulationConfig *config) {
+    /* A ordem oficial do tick coloca conclusoes de E/S antes de chegadas. */
+    return complete_io(processes, blocked, ready, current_time, config) &&
+           admit_arrivals(processes, arrivals, ready, current_time, config);
 }
 
 static bool advance_time(int *current_time) {
@@ -248,7 +413,8 @@ static bool advance_time(int *current_time) {
 }
 
 static bool perform_context_switch(Process *processes,
-                                   size_t process_count,
+                                   ArrivalQueue *arrivals,
+                                   BlockedHeap *blocked,
                                    ReadyQueue *ready,
                                    int *current_time,
                                    const SimulationConfig *config,
@@ -262,19 +428,68 @@ static bool perform_context_switch(Process *processes,
         debug_log(config, "[t=%d] troca de contexto (%d/%d)\n",
                   *current_time, tick + 1, config->context_switch_cost);
 
-        if (!progress_blocked_io(processes, process_count) ||
-            !advance_time(current_time)) {
-            return false;
-        }
-
-        if (tick + 1 < config->context_switch_cost &&
-            (!complete_io(processes, process_count, ready, *current_time, config) ||
-             !admit_arrivals(processes, process_count, ready, *current_time, config))) {
+        if (!advance_time(current_time) ||
+            !process_system_events(processes, arrivals, blocked, ready,
+                                   *current_time, config)) {
             return false;
         }
     }
 
     return true;
+}
+
+static bool idle_until_next_event(const ArrivalQueue *arrivals,
+                                  const BlockedHeap *blocked,
+                                  int *current_time,
+                                  SimulationResult *result,
+                                  const SimulationConfig *config) {
+    int next_time = INT_MAX;
+    int delta;
+
+    if (arrivals->next < arrivals->count &&
+        arrivals->items[arrivals->next].arrival_time < next_time) {
+        next_time = arrivals->items[arrivals->next].arrival_time;
+    }
+    if (blocked->count > 0 && blocked->items[0].completion_time < next_time) {
+        next_time = blocked->items[0].completion_time;
+    }
+    if (next_time == INT_MAX || next_time <= *current_time) {
+        return false;
+    }
+
+    delta = next_time - *current_time;
+    debug_log(config, "[t=%d] CPU ociosa por %d tick(s)\n",
+              *current_time, delta);
+    result->idle_ticks += (size_t) delta;
+    *current_time = next_time;
+    return true;
+}
+
+static bool block_running_process(Process *process,
+                                  size_t process_index,
+                                  int current_time,
+                                  BlockedHeap *blocked) {
+    Burst *io_burst;
+    int completion_time;
+
+    ++process->current_burst_index;
+    if (process->current_burst_index >= process->burst_count) {
+        return false;
+    }
+
+    io_burst = &process->bursts[process->current_burst_index];
+    if (io_burst->type != BURST_IO || io_burst->duration <= 0 ||
+        io_burst->duration > INT_MAX - current_time) {
+        return false;
+    }
+
+    completion_time = current_time + io_burst->duration;
+    process->state = PROCESS_BLOCKED;
+    return blocked_heap_push(blocked, (BlockedEvent) {
+        .process_index = process_index,
+        .completion_time = completion_time,
+        .pid = process->pid
+    });
 }
 
 SimulationConfig simulator_default_config(void) {
@@ -292,6 +507,8 @@ bool simulator_run(Process *processes,
                    SimulationResult *result) {
     SimulationConfig effective_config;
     ReadyQueue ready = {0};
+    ArrivalQueue arrivals = {0};
+    BlockedHeap blocked = {0};
     SchedulerProcessView *ready_view = NULL;
     size_t running_index = NO_PROCESS;
     size_t previous_index = NO_PROCESS;
@@ -307,19 +524,25 @@ bool simulator_run(Process *processes,
     }
 
     effective_config = config != NULL ? *config : simulator_default_config();
-    if (effective_config.context_switch_cost < 0) {
+    if (effective_config.context_switch_cost < 0 ||
+        process_count > SIZE_MAX / sizeof(*ready_view)) {
         return false;
     }
 
     if (!ready_queue_init(&ready, process_count) ||
-        process_count > SIZE_MAX / sizeof(*ready_view)) {
+        !arrival_queue_init(&arrivals, processes, process_count) ||
+        !blocked_heap_init(&blocked, process_count)) {
         ready_queue_destroy(&ready);
+        arrival_queue_destroy(&arrivals);
+        blocked_heap_destroy(&blocked);
         return false;
     }
 
     ready_view = malloc(process_count * sizeof(*ready_view));
     if (ready_view == NULL) {
         ready_queue_destroy(&ready);
+        arrival_queue_destroy(&arrivals);
+        blocked_heap_destroy(&blocked);
         return false;
     }
 
@@ -330,10 +553,8 @@ bool simulator_run(Process *processes,
         Process *running;
         Burst *cpu_burst;
 
-        if (!complete_io(processes, process_count, &ready,
-                         current_time, &effective_config) ||
-            !admit_arrivals(processes, process_count, &ready,
-                            current_time, &effective_config)) {
+        if (!process_system_events(processes, &arrivals, &blocked, &ready,
+                                   current_time, &effective_config)) {
             goto cleanup;
         }
 
@@ -342,12 +563,10 @@ bool simulator_run(Process *processes,
             size_t selected_index;
 
             if (ready.count == 0) {
-                debug_log(&effective_config, "[t=%d] CPU ociosa\n", current_time);
-                if (!progress_blocked_io(processes, process_count) ||
-                    !advance_time(&current_time)) {
+                if (!idle_until_next_event(&arrivals, &blocked, &current_time,
+                                           result, &effective_config)) {
                     goto cleanup;
                 }
-                ++result->idle_ticks;
                 previous_is_active = false;
                 continue;
             }
@@ -364,9 +583,9 @@ bool simulator_run(Process *processes,
             selected_index = ready.items[selected_position];
 
             if (previous_is_active && selected_index != previous_index) {
-                if (!perform_context_switch(processes, process_count, &ready,
-                                            &current_time, &effective_config,
-                                            result)) {
+                if (!perform_context_switch(processes, &arrivals, &blocked,
+                                            &ready, &current_time,
+                                            &effective_config, result)) {
                     goto cleanup;
                 }
                 previous_is_active = false;
@@ -394,10 +613,6 @@ bool simulator_run(Process *processes,
             goto cleanup;
         }
 
-        if (!progress_blocked_io(processes, process_count)) {
-            goto cleanup;
-        }
-
         --cpu_burst->remaining_time;
         ++running->total_cpu_executed;
         ++slice_ticks;
@@ -422,11 +637,10 @@ bool simulator_run(Process *processes,
                           "[t=%d] PID %d: RUNNING -> FINISHED\n",
                           current_time, running->pid);
             } else {
-                ++running->current_burst_index;
-                if (running->bursts[running->current_burst_index].type != BURST_IO) {
+                if (!block_running_process(running, running_index,
+                                           current_time, &blocked)) {
                     goto cleanup;
                 }
-                running->state = PROCESS_BLOCKED;
                 debug_log(&effective_config,
                           "[t=%d] PID %d: RUNNING -> BLOCKED\n",
                           current_time, running->pid);
@@ -466,5 +680,7 @@ bool simulator_run(Process *processes,
 cleanup:
     free(ready_view);
     ready_queue_destroy(&ready);
+    arrival_queue_destroy(&arrivals);
+    blocked_heap_destroy(&blocked);
     return success;
 }
