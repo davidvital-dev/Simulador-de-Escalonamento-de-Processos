@@ -35,3 +35,9 @@ Para verificar se os quatro perfis experimentais são distintos e coerentes:
 ```bash
 make test-workload-scenarios
 ```
+
+Para verificar configurações personalizadas e configurações inválidas:
+
+```bash
+make test-workload-config
+```

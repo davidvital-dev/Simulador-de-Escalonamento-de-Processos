@@ -79,6 +79,7 @@ make clean
 ## Convenções técnicas definidas
 
 As decisões detalhadas estão em `docs/decisoes-tecnicas.md`.
+Os parâmetros ajustáveis do gerador estão em `docs/cenarios-de-carga.md`.
 
 - tempo discreto;
 - prioridade `0` como maior prioridade;
