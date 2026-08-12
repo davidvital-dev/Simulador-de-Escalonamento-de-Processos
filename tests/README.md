@@ -18,6 +18,16 @@ Casos mínimos:
 
 ## Teste do gerador de cargas
 
+Para executar toda a suíte do gerador:
+
+```bash
+make test-workload
+```
+
+Esse alvo cobre as 100 seeds nos quatro cenários, estrutura das rajadas, perfis
+experimentais, configurações personalizadas, impressão de debug e sanidade da
+lista de seeds.
+
 Para verificar o determinismo nos quatro cenários:
 
 ```bash

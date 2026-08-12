@@ -6,6 +6,11 @@
 
 #include "workload.h"
 
+enum {
+    DETERMINISM_PROCESS_COUNT = 64,
+    EXPERIMENT_SEED_COUNT = 100
+};
+
 static bool ranges_are_equal(IntRange left, IntRange right) {
     return left.min == right.min && left.max == right.max;
 }
@@ -87,19 +92,21 @@ static bool generated_processes_differ(const Workload *left,
     return false;
 }
 
-static void test_scenario(ScenarioType type) {
-    const uint64_t seed = UINT64_C(0x123456789ABCDEF0);
+static void test_scenario_seed(ScenarioType type, uint64_t seed) {
     ScenarioConfig config;
     Workload first = {0};
     Workload intervening = {0};
     Workload repeated = {0};
 
     assert(workload_default_config(type, &config));
-    assert(workload_generate(seed, &config, 256, &first));
+    assert(workload_generate(seed, &config,
+                             DETERMINISM_PROCESS_COUNT, &first));
 
     /* Uma geração intermediária não pode alterar o resultado da repetição. */
-    assert(workload_generate(seed + 1, &config, 256, &intervening));
-    assert(workload_generate(seed, &config, 256, &repeated));
+    assert(workload_generate(seed + 1, &config,
+                             DETERMINISM_PROCESS_COUNT, &intervening));
+    assert(workload_generate(seed, &config,
+                             DETERMINISM_PROCESS_COUNT, &repeated));
 
     assert(workloads_are_equal(&first, &repeated));
     assert(generated_processes_differ(&first, &intervening));
@@ -125,12 +132,15 @@ static void test_zero_seed(void) {
 
 int main(void) {
     ScenarioType type;
+    uint64_t seed;
 
     for (type = SCENARIO_BALANCED; type < SCENARIO_COUNT; ++type) {
-        test_scenario(type);
+        for (seed = 1; seed <= EXPERIMENT_SEED_COUNT; ++seed) {
+            test_scenario_seed(type, seed);
+        }
     }
     test_zero_seed();
 
-    puts("OK: geracao deterministica validada em todos os cenarios.");
+    puts("OK: 100 seeds deterministicas validadas nos quatro cenarios.");
     return 0;
 }

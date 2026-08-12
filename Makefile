@@ -14,7 +14,7 @@ OBJECTS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SOURCES))
 
 .PHONY: all clean run test-workload-determinism test-workload-bursts \
 	test-workload-scenarios test-workload-config test-workload-debug \
-	test-experiment-seeds
+	test-experiment-seeds test-workload test
 
 all: $(TARGET)
 
@@ -28,6 +28,12 @@ $(BUILD_DIR)/%.o: %.c
 
 run: $(TARGET)
 	./$(TARGET)
+
+test: test-workload
+
+test-workload: test-experiment-seeds test-workload-determinism \
+	test-workload-bursts test-workload-scenarios test-workload-config \
+	test-workload-debug
 
 test-workload-determinism: $(WORKLOAD_DETERMINISM_TEST)
 	./$(WORKLOAD_DETERMINISM_TEST)
