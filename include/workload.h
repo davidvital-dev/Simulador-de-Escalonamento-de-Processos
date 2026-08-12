@@ -2,6 +2,10 @@
 #define WORKLOAD_H
 
 #include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+
+#include "process.h"
 
 typedef enum {
     SCENARIO_BALANCED,
@@ -39,6 +43,13 @@ typedef struct {
     IntRange biased_priority;
 } ScenarioConfig;
 
+typedef struct {
+    Process *processes;
+    size_t process_count;
+    uint64_t seed;
+    ScenarioConfig config;
+} Workload;
+
 /* Preenche config com os parâmetros-padrão do cenário informado. */
 bool workload_default_config(ScenarioType type, ScenarioConfig *config);
 
@@ -47,5 +58,17 @@ bool workload_config_is_valid(const ScenarioConfig *config);
 
 /* Retorna um identificador estável, apropriado para logs e arquivos CSV. */
 const char *workload_scenario_name(ScenarioType type);
+
+/*
+ * Gera uma carga com os campos básicos de cada processo. O parâmetro workload
+ * deve apontar para uma estrutura ainda não inicializada ou já liberada.
+ * Retorna false sem alterar workload quando os argumentos forem inválidos ou
+ * quando não houver memória suficiente.
+ */
+bool workload_generate(uint64_t seed, const ScenarioConfig *config,
+                       size_t process_count, Workload *workload);
+
+/* Libera os recursos da carga e deixa a estrutura zerada. */
+void workload_free(Workload *workload);
 
 #endif

@@ -1,6 +1,8 @@
 #include "workload.h"
 
+#include <limits.h>
 #include <stddef.h>
+#include <stdlib.h>
 
 static bool range_is_non_negative(IntRange range) {
     return range.min >= 0 && range.min <= range.max;
@@ -8,6 +10,41 @@ static bool range_is_non_negative(IntRange range) {
 
 static bool range_is_positive(IntRange range) {
     return range.min > 0 && range.min <= range.max;
+}
+
+/* SplitMix64 evita o estado global e as diferenças de implementação de rand(). */
+static uint64_t random_next(uint64_t *state) {
+    uint64_t value;
+
+    *state += UINT64_C(0x9E3779B97F4A7C15);
+    value = *state;
+    value = (value ^ (value >> 30)) * UINT64_C(0xBF58476D1CE4E5B9);
+    value = (value ^ (value >> 27)) * UINT64_C(0x94D049BB133111EB);
+    return value ^ (value >> 31);
+}
+
+static int random_in_range(uint64_t *state, IntRange range) {
+    uint64_t value;
+    const uint64_t span = (uint64_t) (range.max - range.min) + 1;
+    const uint64_t threshold = (UINT64_C(0) - span) % span;
+
+    do {
+        value = random_next(state);
+    } while (value < threshold);
+
+    return range.min + (int) (value % span);
+}
+
+static int random_priority(uint64_t *state, const ScenarioConfig *config) {
+    if (config->priority_bias_percent > 0) {
+        const IntRange percent_range = {1, 100};
+        if (random_in_range(state, percent_range) <=
+            config->priority_bias_percent) {
+            return random_in_range(state, config->biased_priority);
+        }
+    }
+
+    return random_in_range(state, config->priority);
 }
 
 bool workload_default_config(ScenarioType type, ScenarioConfig *config) {
@@ -118,4 +155,59 @@ const char *workload_scenario_name(ScenarioType type) {
     }
 
     return "invalid";
+}
+
+bool workload_generate(uint64_t seed, const ScenarioConfig *config,
+                       size_t process_count, Workload *workload) {
+    Process *processes;
+    uint64_t random_state = seed;
+    int arrival_time = 0;
+    size_t index;
+
+    if (workload == NULL || !workload_config_is_valid(config) ||
+        process_count == 0 || process_count > (size_t) INT_MAX) {
+        return false;
+    }
+
+    if (config->interarrival_time.max > 0 &&
+        process_count - 1 >
+            (size_t) INT_MAX / (size_t) config->interarrival_time.max) {
+        return false;
+    }
+
+    processes = calloc(process_count, sizeof(*processes));
+    if (processes == NULL) {
+        return false;
+    }
+
+    for (index = 0; index < process_count; ++index) {
+        if (index > 0) {
+            arrival_time += random_in_range(&random_state,
+                                            config->interarrival_time);
+        }
+
+        processes[index] = (Process) {
+            .pid = (int) index + 1,
+            .arrival_time = arrival_time,
+            .priority = random_priority(&random_state, config),
+            .state = PROCESS_NEW
+        };
+    }
+
+    *workload = (Workload) {
+        .processes = processes,
+        .process_count = process_count,
+        .seed = seed,
+        .config = *config
+    };
+    return true;
+}
+
+void workload_free(Workload *workload) {
+    if (workload == NULL) {
+        return;
+    }
+
+    free(workload->processes);
+    *workload = (Workload) {0};
 }
