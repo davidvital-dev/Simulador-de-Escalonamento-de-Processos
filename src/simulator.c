@@ -580,7 +580,11 @@ bool simulator_run(Process *processes,
                 selected_position >= ready.count) {
                 goto cleanup;
             }
-            selected_index = ready.items[selected_position];
+
+            selected_index = ready_queue_remove_at(&ready, selected_position);
+            if (selected_index == NO_PROCESS) {
+                goto cleanup;
+            }
 
             if (previous_is_active && selected_index != previous_index) {
                 if (!perform_context_switch(processes, &arrivals, &blocked,
@@ -588,14 +592,10 @@ bool simulator_run(Process *processes,
                                             &effective_config, result)) {
                     goto cleanup;
                 }
-                previous_is_active = false;
-                continue;
             }
 
-            running_index = ready_queue_remove_at(&ready, selected_position);
-            if (running_index == NO_PROCESS) {
-                goto cleanup;
-            }
+            previous_is_active = false;
+            running_index = selected_index;
             processes[running_index].state = PROCESS_RUNNING;
             slice_ticks = 0;
             debug_log(&effective_config, "[t=%d] PID %d: READY -> RUNNING\n",
