@@ -11,6 +11,7 @@ WORKLOAD_DEBUG_TEST := $(BUILD_DIR)/tests/test_workload_debug
 PROCESS_RUNTIME_TEST := $(BUILD_DIR)/tests/test_process_runtime
 SIMULATOR_STATES_TEST := $(BUILD_DIR)/tests/test_simulator_states
 SIMULATOR_CONTEXT_TEST := $(BUILD_DIR)/tests/test_simulator_context
+SIMULATOR_WORKLOAD_TEST := $(BUILD_DIR)/tests/test_simulator_workload
 
 SOURCES := $(wildcard src/*.c) $(wildcard src/schedulers/*.c)
 OBJECTS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SOURCES))
@@ -18,7 +19,8 @@ OBJECTS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SOURCES))
 .PHONY: all clean run test-workload-determinism test-workload-bursts \
 	test-workload-scenarios test-workload-config test-workload-debug \
 	test-experiment-seeds test-workload test-process-runtime \
-	test-simulator-states test-simulator-context test-simulator test
+	test-simulator-states test-simulator-context test-simulator-workload \
+	test-simulator test
 
 all: $(TARGET)
 
@@ -98,7 +100,15 @@ $(SIMULATOR_CONTEXT_TEST): tests/test_simulator_context.c src/simulator.c src/pr
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) tests/test_simulator_context.c src/simulator.c src/process.c -o $@
 
-test-simulator: test-process-runtime test-simulator-states test-simulator-context
+test-simulator-workload: $(SIMULATOR_WORKLOAD_TEST)
+	./$(SIMULATOR_WORKLOAD_TEST)
+
+$(SIMULATOR_WORKLOAD_TEST): tests/test_simulator_workload.c src/simulator.c src/process.c src/workload.c include/simulator.h include/scheduler.h include/process.h include/workload.h
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) tests/test_simulator_workload.c src/simulator.c src/process.c src/workload.c -o $@
+
+test-simulator: test-process-runtime test-simulator-states test-simulator-context \
+	test-simulator-workload
 
 clean:
 	rm -rf $(BUILD_DIR)
