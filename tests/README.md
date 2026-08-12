@@ -63,3 +63,48 @@ Para verificar a lista fixa de 100 seeds experimentais:
 ```bash
 make test-experiment-seeds
 ```
+
+## Testes do motor da simulação
+
+Para executar a suíte do motor:
+
+```bash
+make test-simulator
+```
+
+Ela é dividida em três grupos.
+
+### Runtime e cópia profunda
+
+```bash
+make test-process-runtime
+```
+
+Valida reset dos campos mutáveis, restauração dos tempos restantes e cópia
+profunda das rajadas.
+
+### Estados, chegadas e E/S
+
+```bash
+make test-simulator-states
+```
+
+Valida `NEW -> READY -> RUNNING`, `RUNNING -> BLOCKED -> READY`, término,
+chegadas em tempos diferentes, CPU ociosa e operações de E/S paralelas.
+
+### Troca de contexto e preempção
+
+```bash
+make test-simulator-context
+```
+
+Valida o custo principal de 2 ticks, ausência de custo em `idle -> processo` e
+o contrato de preempção usado por políticas como Round Robin.
+
+## Suíte completa
+
+```bash
+make test
+```
+
+Executa os testes do gerador e do motor disponíveis no repositório.
