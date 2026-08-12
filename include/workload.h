@@ -60,8 +60,9 @@ bool workload_config_is_valid(const ScenarioConfig *config);
 const char *workload_scenario_name(ScenarioType type);
 
 /*
- * Gera uma carga com os campos básicos de cada processo. O parâmetro workload
- * deve apontar para uma estrutura ainda não inicializada ou já liberada.
+ * Gera uma carga completa, incluindo a sequência alternada de rajadas. O
+ * parâmetro workload deve apontar para uma estrutura ainda não inicializada ou
+ * já liberada.
  * Chamadas independentes com a mesma seed, configuração e quantidade produzem
  * exatamente os mesmos processos, sem depender de estado aleatório global.
  * Retorna false sem alterar workload quando os argumentos forem inválidos ou

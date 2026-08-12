@@ -47,6 +47,52 @@ static int random_priority(uint64_t *state, const ScenarioConfig *config) {
     return random_in_range(state, config->priority);
 }
 
+static bool generate_bursts(uint64_t *random_state,
+                            const ScenarioConfig *config,
+                            Process *process) {
+    const int cpu_burst_count = random_in_range(random_state,
+                                                config->cpu_burst_count);
+    const size_t burst_count = (size_t) cpu_burst_count * 2 - 1;
+    Burst *bursts = calloc(burst_count, sizeof(*bursts));
+    size_t index;
+
+    if (bursts == NULL) {
+        return false;
+    }
+
+    for (index = 0; index < burst_count; ++index) {
+        const bool is_cpu = index % 2 == 0;
+        const IntRange duration_range = is_cpu
+            ? config->cpu_burst_duration
+            : config->io_burst_duration;
+        const int duration = random_in_range(random_state, duration_range);
+
+        bursts[index] = (Burst) {
+            .type = is_cpu ? BURST_CPU : BURST_IO,
+            .duration = duration,
+            .remaining_time = duration
+        };
+    }
+
+    process->bursts = bursts;
+    process->burst_count = burst_count;
+    process->current_burst_index = 0;
+    return true;
+}
+
+static void free_process_array(Process *processes, size_t process_count) {
+    size_t index;
+
+    if (processes == NULL) {
+        return;
+    }
+
+    for (index = 0; index < process_count; ++index) {
+        free(processes[index].bursts);
+    }
+    free(processes);
+}
+
 bool workload_default_config(ScenarioType type, ScenarioConfig *config) {
     if (config == NULL) {
         return false;
@@ -190,8 +236,16 @@ bool workload_generate(uint64_t seed, const ScenarioConfig *config,
             .pid = (int) index + 1,
             .arrival_time = arrival_time,
             .priority = random_priority(&random_state, config),
-            .state = PROCESS_NEW
+            .state = PROCESS_NEW,
+            .bursts = NULL,
+            .burst_count = 0,
+            .current_burst_index = 0
         };
+
+        if (!generate_bursts(&random_state, config, &processes[index])) {
+            free_process_array(processes, process_count);
+            return false;
+        }
     }
 
     *workload = (Workload) {
@@ -208,6 +262,6 @@ void workload_free(Workload *workload) {
         return;
     }
 
-    free(workload->processes);
+    free_process_array(workload->processes, workload->process_count);
     *workload = (Workload) {0};
 }

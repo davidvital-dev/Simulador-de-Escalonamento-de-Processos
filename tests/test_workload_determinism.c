@@ -27,10 +27,27 @@ static bool configs_are_equal(const ScenarioConfig *left,
 }
 
 static bool processes_are_equal(const Process *left, const Process *right) {
-    return left->pid == right->pid &&
-           left->arrival_time == right->arrival_time &&
-           left->priority == right->priority &&
-           left->state == right->state;
+    size_t index;
+
+    if (left->pid != right->pid ||
+        left->arrival_time != right->arrival_time ||
+        left->priority != right->priority ||
+        left->state != right->state ||
+        left->burst_count != right->burst_count ||
+        left->current_burst_index != right->current_burst_index) {
+        return false;
+    }
+
+    for (index = 0; index < left->burst_count; ++index) {
+        if (left->bursts[index].type != right->bursts[index].type ||
+            left->bursts[index].duration != right->bursts[index].duration ||
+            left->bursts[index].remaining_time !=
+                right->bursts[index].remaining_time) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 static bool workloads_are_equal(const Workload *left, const Workload *right) {

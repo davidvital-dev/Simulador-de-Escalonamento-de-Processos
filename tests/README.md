@@ -23,3 +23,9 @@ Para verificar o determinismo nos quatro cenários:
 ```bash
 make test-workload-determinism
 ```
+
+Para verificar PID, chegada, prioridade e sequências de rajadas:
+
+```bash
+make test-workload-bursts
+```
