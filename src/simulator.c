@@ -655,7 +655,13 @@ bool simulator_run(Process *processes,
             const SchedulerProcessView running_view =
                 process_view(running, running_index);
 
-            if (scheduler->ops->should_preempt(&running_view, slice_ticks,
+            if (!build_ready_view(processes, &ready, ready_view)) {
+                goto cleanup;
+            }
+            if (scheduler->ops->should_preempt(&running_view,
+                                               ready_view,
+                                               ready.count,
+                                               slice_ticks,
                                                current_time,
                                                scheduler->context)) {
                 running->state = PROCESS_READY;
