@@ -47,3 +47,9 @@ Para verificar a impressão de depuração de cargas pequenas:
 ```bash
 make test-workload-debug
 ```
+
+Para verificar a lista fixa de 100 seeds experimentais:
+
+```bash
+make test-experiment-seeds
+```

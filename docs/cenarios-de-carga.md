@@ -35,3 +35,14 @@ somado ao tempo de chegada anterior. Uma carga com `N` rajadas de CPU contém
 
 Antes de gerar uma carga personalizada, a configuração deve ser verificada com
 `workload_config_is_valid`.
+
+## Seeds dos experimentos
+
+Os experimentos principais devem usar as 100 seeds versionadas em
+`config/experiment-seeds.txt`. A lista contém os inteiros de `1` a `100`, um por
+linha, e deve ser reutilizada sem alterações para cada cenário e algoritmo.
+
+Seeds consecutivas são adequadas neste projeto porque o estado inicial passa
+pelo misturador SplitMix64 implementado em `src/workload.c`. Fixar a lista no
+repositório permite reproduzir exatamente as cargas e identificar execuções
+faltantes sem gerar novas seeds durante o experimento.
