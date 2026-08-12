@@ -20,11 +20,15 @@ static size_t pick_first(const SchedulerProcessView *ready,
 }
 
 static bool preempt_on_quantum(const SchedulerProcessView *running,
+                               const SchedulerProcessView *ready,
+                               size_t ready_count,
                                int slice_ticks,
                                int current_time,
                                void *context) {
     const RoundRobinTestContext *rr = context;
     (void) running;
+    (void) ready;
+    (void) ready_count;
     (void) current_time;
     return rr != NULL && slice_ticks >= rr->quantum;
 }
