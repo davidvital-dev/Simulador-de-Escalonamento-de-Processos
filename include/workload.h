@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #include "process.h"
 
@@ -70,6 +71,13 @@ const char *workload_scenario_name(ScenarioType type);
  */
 bool workload_generate(uint64_t seed, const ScenarioConfig *config,
                        size_t process_count, Workload *workload);
+
+/*
+ * Imprime uma representação legível da carga para depuração. No máximo
+ * max_processes são exibidos; os processos restantes são apenas contabilizados.
+ */
+bool workload_print_debug(const Workload *workload, FILE *stream,
+                          size_t max_processes);
 
 /* Libera os recursos da carga e deixa a estrutura zerada. */
 void workload_free(Workload *workload);

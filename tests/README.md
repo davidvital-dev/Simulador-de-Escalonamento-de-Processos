@@ -41,3 +41,9 @@ Para verificar configurações personalizadas e configurações inválidas:
 ```bash
 make test-workload-config
 ```
+
+Para verificar a impressão de depuração de cargas pequenas:
+
+```bash
+make test-workload-debug
+```

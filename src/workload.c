@@ -1,5 +1,6 @@
 #include "workload.h"
 
+#include <inttypes.h>
 #include <limits.h>
 #include <stddef.h>
 #include <stdlib.h>
@@ -255,6 +256,68 @@ bool workload_generate(uint64_t seed, const ScenarioConfig *config,
         .config = *config
     };
     return true;
+}
+
+bool workload_print_debug(const Workload *workload, FILE *stream,
+                          size_t max_processes) {
+    size_t displayed_count;
+    size_t process_index;
+
+    if (workload == NULL || stream == NULL ||
+        (workload->process_count > 0 && workload->processes == NULL)) {
+        return false;
+    }
+
+    if (fprintf(stream, "Workload scenario=%s seed=%" PRIu64
+                        " processes=%zu\n",
+                workload_scenario_name(workload->config.type),
+                workload->seed, workload->process_count) < 0 ||
+        fputs("PID ARRIVAL PRIORITY BURSTS\n", stream) == EOF) {
+        return false;
+    }
+
+    displayed_count = workload->process_count < max_processes
+        ? workload->process_count
+        : max_processes;
+
+    for (process_index = 0;
+         process_index < displayed_count;
+         ++process_index) {
+        const Process *process = &workload->processes[process_index];
+        size_t burst_index;
+
+        if (fprintf(stream, "%d %d %d ", process->pid,
+                    process->arrival_time, process->priority) < 0) {
+            return false;
+        }
+
+        for (burst_index = 0;
+             burst_index < process->burst_count;
+             ++burst_index) {
+            const Burst *burst = &process->bursts[burst_index];
+
+            if (burst_index > 0 && fputs(" -> ", stream) == EOF) {
+                return false;
+            }
+            if (fprintf(stream, "%s(%d)",
+                        burst->type == BURST_CPU ? "CPU" : "IO",
+                        burst->duration) < 0) {
+                return false;
+            }
+        }
+
+        if (fputc('\n', stream) == EOF) {
+            return false;
+        }
+    }
+
+    if (displayed_count < workload->process_count &&
+        fprintf(stream, "... %zu process(es) omitted\n",
+                workload->process_count - displayed_count) < 0) {
+        return false;
+    }
+
+    return !ferror(stream);
 }
 
 void workload_free(Workload *workload) {
