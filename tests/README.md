@@ -174,6 +174,22 @@ modificação do arquivo de saída de cada combinação. Quando `main.c` e os
 escalonadores estiverem prontos, basta apontar `--binary` para o binário
 real; a lógica do runner não muda.
 
+### Cobertura do dataset e valores inválidos
+
+```bash
+make test-validate-dataset
+```
+
+Valida `scripts/validate_dataset.py` com datasets sintéticos construídos
+a partir de `run_experiments.build_combinations`: dataset completo passa
+sem apontar nada; falta ou duplicação de uma combinação
+cenário+algoritmo+seed é detectada exatamente; e `NaN`, infinito, valor
+não numérico, negativo em `turnaround_medio`/`trocas_contexto` e
+`jain_slowdown` fora de `[0, 1]` (a mesma convenção usada por
+`metrics.c`, `stats.py` e `plots.py`) são apontados por linha, com o
+motivo específico de cada campo, sem interromper a checagem das demais
+linhas.
+
 ## Suíte completa
 
 ```bash
@@ -181,4 +197,5 @@ make test
 ```
 
 Executa os testes do gerador, do motor, das métricas, da estatística, dos
-gráficos e do pipeline experimental disponíveis no repositório.
+gráficos, do pipeline experimental e da validação do dataset disponíveis
+no repositório.
