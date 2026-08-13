@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
+#include <string.h>
 
 /*
  * Inclui a implementacao diretamente (em vez de linkar src/metrics.c e
@@ -152,6 +153,101 @@ static void test_jain_index_is_one_when_slowdowns_are_equal(void) {
     assert(fabs(jain_accumulator_index(&accumulator) - 1.0) < 1e-9);
 }
 
+static void test_compute_run_matches_manual_calculation(void) {
+    Burst bursts_a[] = {{BURST_CPU, 2, 0}};
+    Burst bursts_b[] = {{BURST_CPU, 3, 0}};
+    Burst bursts_c[] = {{BURST_CPU, 5, 0}};
+    Process processes[] = {
+        {
+            .pid = 20, .arrival_time = 0, .finish_time = 4,
+            .state = PROCESS_FINISHED, .bursts = bursts_a, .burst_count = 1
+        },
+        {
+            .pid = 21, .arrival_time = 0, .finish_time = 6,
+            .state = PROCESS_FINISHED, .bursts = bursts_b, .burst_count = 1
+        },
+        {
+            .pid = 22, .arrival_time = 0, .finish_time = 10,
+            .state = PROCESS_FINISHED, .bursts = bursts_c, .burst_count = 1
+        }
+    };
+    SimulationResult result = {
+        .elapsed_time = 10,
+        .completed_processes = 3,
+        .context_switches = 7,
+        .context_switch_ticks = 14,
+        .idle_ticks = 0
+    };
+    RunMetrics metrics;
+
+    /*
+     * turnaround a mao: 4, 6, 10 -> media = 20/3.
+     * slowdown a mao: 4/2=2.0, 6/3=2.0, 10/5=2.0 -> Jain = 1.0.
+     */
+    assert(metrics_compute_run(processes, 3, &result, 42, "balanced", "fcfs",
+                               &metrics));
+
+    assert(metrics.seed == 42);
+    assert(strcmp(metrics.scenario, "balanced") == 0);
+    assert(strcmp(metrics.algorithm, "fcfs") == 0);
+    assert(metrics.process_count == 3);
+    assert(fabs(metrics.avg_turnaround - (20.0 / 3.0)) < 1e-9);
+    assert(metrics.context_switches == 7);
+    assert(fabs(metrics.jain_slowdown - 1.0) < 1e-9);
+}
+
+static void test_compute_run_ignores_unfinished_and_invalid_processes(void) {
+    Burst bursts_a[] = {{BURST_CPU, 2, 0}};
+    Burst bursts_b[] = {{BURST_CPU, 4, 0}};
+    Process processes[] = {
+        {
+            .pid = 30, .arrival_time = 0, .finish_time = 4,
+            .state = PROCESS_FINISHED, .bursts = bursts_a, .burst_count = 1
+        },
+        /*
+         * ainda em execucao: nao deve entrar no calculo. finish_time
+         * propositalmente valido (8) para isolar o filtro de estado: se o
+         * filtro falhar, este processo teria slowdown positivo (2.0) e
+         * mudaria avg_turnaround de 4.0 para 6.0, denunciando o bug mesmo
+         * que o Jain continue dando 1.0 por coincidencia de valores iguais.
+         */
+        {
+            .pid = 31, .arrival_time = 0, .finish_time = 8,
+            .state = PROCESS_RUNNING, .bursts = bursts_b, .burst_count = 1
+        },
+        /* finalizado mas sem rajadas: slowdown invalido, deve ser ignorado. */
+        {
+            .pid = 32, .arrival_time = 0, .finish_time = 3,
+            .state = PROCESS_FINISHED, .bursts = NULL, .burst_count = 0
+        }
+    };
+    SimulationResult result = {.context_switches = 5};
+    RunMetrics metrics;
+
+    assert(metrics_compute_run(processes, 3, &result, 7, "io", "rr",
+                               &metrics));
+
+    /* somente o processo 30 entra no calculo: turnaround 4, slowdown 2.0. */
+    assert(fabs(metrics.avg_turnaround - 4.0) < 1e-9);
+    assert(fabs(metrics.jain_slowdown - 1.0) < 1e-9);
+    assert(metrics.context_switches == 5);
+    /* process_count reflete o tamanho total da carga, nao so os validos. */
+    assert(metrics.process_count == 3);
+}
+
+static void test_compute_run_fails_without_valid_finished_processes(void) {
+    Process processes[] = {
+        {.pid = 40, .arrival_time = 0, .finish_time = -1, .state = PROCESS_READY}
+    };
+    SimulationResult result = {.context_switches = 0};
+    RunMetrics metrics = {.seed = 999};
+
+    assert(!metrics_compute_run(processes, 1, &result, 1, "cpu", "priority",
+                                &metrics));
+    /* out nao deve ser alterado quando a funcao falha. */
+    assert(metrics.seed == 999);
+}
+
 int main(void) {
     test_turnaround_single_process();
     test_turnaround_with_nonzero_arrival();
@@ -161,7 +257,10 @@ int main(void) {
     test_slowdown_matches_manual_calculation();
     test_slowdown_invalid_when_ideal_time_not_positive();
     test_jain_index_is_one_when_slowdowns_are_equal();
+    test_compute_run_matches_manual_calculation();
+    test_compute_run_ignores_unfinished_and_invalid_processes();
+    test_compute_run_fails_without_valid_finished_processes();
 
-    puts("OK: turnaround, tempo minimo ideal, slowdown e indice de Jain validados.");
+    puts("OK: turnaround, ideal, slowdown, Jain e RunMetrics validados.");
     return 0;
 }
