@@ -101,6 +101,15 @@ bool metrics_compute_run(const Process *processes, size_t process_count,
     return true;
 }
 
-void metrics_placeholder(void) {
-    /* TODO(Henrique): exportação CSV. */
+void metrics_csv_write_header(FILE *stream) {
+    fprintf(stream,
+            "seed,cenario,algoritmo,n_processos,turnaround_medio,"
+            "trocas_contexto,jain_slowdown\n");
+}
+
+void metrics_csv_write_row(FILE *stream, const RunMetrics *metrics) {
+    fprintf(stream, "%u,%s,%s,%zu,%.2f,%zu,%.4f\n",
+            metrics->seed, metrics->scenario, metrics->algorithm,
+            metrics->process_count, metrics->avg_turnaround,
+            metrics->context_switches, metrics->jain_slowdown);
 }

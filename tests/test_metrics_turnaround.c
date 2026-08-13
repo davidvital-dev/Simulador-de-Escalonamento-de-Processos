@@ -248,6 +248,61 @@ static void test_compute_run_fails_without_valid_finished_processes(void) {
     assert(metrics.seed == 999);
 }
 
+static void test_csv_header_and_rows_match_expected_format(void) {
+    const RunMetrics balanced_fcfs = {
+        .seed = 42,
+        .scenario = "balanced",
+        .algorithm = "fcfs",
+        .process_count = 1000,
+        .avg_turnaround = 123.45,
+        .context_switches = 998,
+        .jain_slowdown = 0.9608
+    };
+    const RunMetrics io_rr = {
+        .seed = 7,
+        .scenario = "io",
+        .algorithm = "rr",
+        .process_count = 50,
+        .avg_turnaround = 45.6,
+        .context_switches = 120,
+        .jain_slowdown = 0.5
+    };
+    const char *expected =
+        "seed,cenario,algoritmo,n_processos,turnaround_medio,"
+        "trocas_contexto,jain_slowdown\n"
+        "42,balanced,fcfs,1000,123.45,998,0.9608\n"
+        "7,io,rr,50,45.60,120,0.5000\n";
+    FILE *stream;
+    char output[512];
+    size_t bytes_read;
+    size_t line_count = 0;
+    size_t index;
+
+    stream = tmpfile();
+    assert(stream != NULL);
+
+    metrics_csv_write_header(stream);
+    metrics_csv_write_row(stream, &balanced_fcfs);
+    metrics_csv_write_row(stream, &io_rr);
+
+    rewind(stream);
+    bytes_read = fread(output, 1, sizeof(output) - 1, stream);
+    output[bytes_read] = '\0';
+
+    /* cabecalho e as duas linhas devem bater exatamente, na mesma ordem. */
+    assert(strcmp(output, expected) == 0);
+
+    /* exatamente uma linha por execucao: cabecalho + 2 linhas = 3 '\n'. */
+    for (index = 0; index < bytes_read; ++index) {
+        if (output[index] == '\n') {
+            ++line_count;
+        }
+    }
+    assert(line_count == 3);
+
+    fclose(stream);
+}
+
 int main(void) {
     test_turnaround_single_process();
     test_turnaround_with_nonzero_arrival();
@@ -260,7 +315,8 @@ int main(void) {
     test_compute_run_matches_manual_calculation();
     test_compute_run_ignores_unfinished_and_invalid_processes();
     test_compute_run_fails_without_valid_finished_processes();
+    test_csv_header_and_rows_match_expected_format();
 
-    puts("OK: turnaround, ideal, slowdown, Jain e RunMetrics validados.");
+    puts("OK: turnaround, ideal, slowdown, Jain, RunMetrics e CSV validados.");
     return 0;
 }

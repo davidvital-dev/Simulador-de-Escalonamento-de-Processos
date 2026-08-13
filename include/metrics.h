@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdio.h>
 
 #include "process.h"
 #include "simulator.h"
@@ -55,7 +56,16 @@ bool metrics_compute_run(const Process *processes, size_t process_count,
                          const char *scenario, const char *algorithm,
                          RunMetrics *out);
 
-/* TODO(Henrique): definir exportação CSV. */
-void metrics_placeholder(void);
+/*
+ * Escreve o cabeçalho do CSV, com uma quebra de linha ao final:
+ * seed,cenario,algoritmo,n_processos,turnaround_medio,trocas_contexto,jain_slowdown
+ */
+void metrics_csv_write_header(FILE *stream);
+
+/*
+ * Escreve uma linha do CSV para uma execucao, na mesma ordem de colunas do
+ * cabecalho. turnaround_medio usa 2 casas decimais; jain_slowdown usa 4.
+ */
+void metrics_csv_write_row(FILE *stream, const RunMetrics *metrics);
 
 #endif
