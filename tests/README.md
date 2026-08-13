@@ -154,11 +154,31 @@ dos algoritmos em cada figura, e que os 3 arquivos PNG obrigatórios
 PNG válido. Também grava os 3 gráficos em `results/` para conferência
 visual manual.
 
+## Testes do pipeline experimental
+
+### Runner contra o binário fake
+
+```bash
+make test-run-experiments
+```
+
+O binário real ainda não aceita `--scenario/--seed/--algorithm/--processes`
+(`main.c` é um placeholder) e os escalonadores ainda não existem, então
+`scripts/run_experiments.py` é testado contra `scripts/fake_simulator.py`
+(usado só em testes; falha de propósito na seed `13`, ou com a flag
+`--force-fail`). Valida que o log de falhas (`failures.csv`) tem todos os
+campos exigidos (seed, cenário, algoritmo, código de saída, stderr) e que
+reexecutar o runner tenta só as combinações que faltaram/falharam — as
+que já tiveram sucesso não são repetidas, verificado pelo horário de
+modificação do arquivo de saída de cada combinação. Quando `main.c` e os
+escalonadores estiverem prontos, basta apontar `--binary` para o binário
+real; a lógica do runner não muda.
+
 ## Suíte completa
 
 ```bash
 make test
 ```
 
-Executa os testes do gerador, do motor, das métricas, da estatística e
-dos gráficos disponíveis no repositório.
+Executa os testes do gerador, do motor, das métricas, da estatística, dos
+gráficos e do pipeline experimental disponíveis no repositório.
