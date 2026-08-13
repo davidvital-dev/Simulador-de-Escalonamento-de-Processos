@@ -111,10 +111,24 @@ Gera 1.000 processos em cada um dos quatro cenários, cria uma cópia profunda d
 carga e verifica se o motor leva todos os processos até `FINISHED` sem alterar
 os valores originais das rajadas.
 
+## Testes de métricas
+
+### Turnaround e tempo mínimo ideal
+
+```bash
+make test-metrics-turnaround
+```
+
+Valida `metrics_turnaround` e `metrics_ideal_time` contra valores calculados à
+mão para 5 processos, incluindo um caso em que `remaining_time` diverge
+propositalmente de `duration` para garantir que o tempo mínimo ideal nunca
+leia os contadores decrementados durante a simulação.
+
 ## Suíte completa
 
 ```bash
 make test
 ```
 
-Executa os testes do gerador e do motor disponíveis no repositório.
+Executa os testes do gerador, do motor e das métricas disponíveis no
+repositório.

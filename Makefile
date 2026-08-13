@@ -26,6 +26,7 @@ PROCESS_RUNTIME_TEST := $(BUILD_DIR)/tests/test_process_runtime$(EXEEXT)
 SIMULATOR_STATES_TEST := $(BUILD_DIR)/tests/test_simulator_states$(EXEEXT)
 SIMULATOR_CONTEXT_TEST := $(BUILD_DIR)/tests/test_simulator_context$(EXEEXT)
 SIMULATOR_WORKLOAD_TEST := $(BUILD_DIR)/tests/test_simulator_workload$(EXEEXT)
+METRICS_TURNAROUND_TEST := $(BUILD_DIR)/tests/test_metrics_turnaround$(EXEEXT)
 
 SOURCES := $(wildcard src/*.c) $(wildcard src/schedulers/*.c)
 OBJECTS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SOURCES))
@@ -34,7 +35,7 @@ OBJECTS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SOURCES))
 	test-workload-scenarios test-workload-config test-workload-debug \
 	test-experiment-seeds test-workload test-process-runtime \
 	test-simulator-states test-simulator-context test-simulator-workload \
-	test-simulator test
+	test-simulator test-metrics-turnaround test-metrics test
 
 all: $(TARGET)
 
@@ -49,7 +50,7 @@ $(BUILD_DIR)/%.o: %.c
 run: $(TARGET)
 	$(call RUN_BIN,$(TARGET))
 
-test: test-workload test-simulator
+test: test-workload test-simulator test-metrics
 
 test-workload: test-experiment-seeds test-workload-determinism \
 	test-workload-bursts test-workload-scenarios test-workload-config \
@@ -123,6 +124,15 @@ $(SIMULATOR_WORKLOAD_TEST): tests/test_simulator_workload.c src/simulator.c src/
 
 test-simulator: test-process-runtime test-simulator-states test-simulator-context \
 	test-simulator-workload
+
+test-metrics: test-metrics-turnaround
+
+test-metrics-turnaround: $(METRICS_TURNAROUND_TEST)
+	$(call RUN_BIN,$(METRICS_TURNAROUND_TEST))
+
+$(METRICS_TURNAROUND_TEST): tests/test_metrics_turnaround.c src/metrics.c include/metrics.h include/process.h
+	@$(call MKDIR_P,$(patsubst %/,%,$(dir $@)))
+	$(CC) $(CFLAGS) tests/test_metrics_turnaround.c src/metrics.c -o $@
 
 clean:
 	@$(CLEAN_BUILD)
