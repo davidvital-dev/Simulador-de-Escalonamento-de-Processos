@@ -124,11 +124,25 @@ mão para 5 processos, incluindo um caso em que `remaining_time` diverge
 propositalmente de `duration` para garantir que o tempo mínimo ideal nunca
 leia os contadores decrementados durante a simulação.
 
+## Testes de estatística
+
+### Média, desvio padrão amostral, IC95% e tabela consolidada
+
+```bash
+make test-stats
+```
+
+Valida `scripts/stats.py` (`summarize` e `summarize_table`) com dados
+sintéticos calculados à mão, incluindo o caso de valores idênticos (desvio
+padrão amostral = 0, IC95% colapsa na própria média) e de amostra única
+(desvio padrão amostral tratado como 0 em vez de lançar exceção), sem
+depender do pipeline experimental nem de um CSV real.
+
 ## Suíte completa
 
 ```bash
 make test
 ```
 
-Executa os testes do gerador, do motor e das métricas disponíveis no
-repositório.
+Executa os testes do gerador, do motor, das métricas e da estatística
+disponíveis no repositório.
