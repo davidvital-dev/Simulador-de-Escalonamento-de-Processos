@@ -138,11 +138,27 @@ padrão amostral = 0, IC95% colapsa na própria média) e de amostra única
 (desvio padrão amostral tratado como 0 em vez de lançar exceção), sem
 depender do pipeline experimental nem de um CSV real.
 
+## Testes de gráficos
+
+### Gráficos comparativos com IC95%
+
+```bash
+make test-plots
+```
+
+Requer `matplotlib` (veja `requirements.txt`). Usa `stats.summarize_table`
+sobre uma carga fictícia para gerar a tabela consolidada e valida
+`scripts/plots.py`: confirma título, eixos (com unidade), legenda e ordem
+dos algoritmos em cada figura, e que os 3 arquivos PNG obrigatórios
+(turnaround médio, trocas de contexto, índice de Jain) são gravados como
+PNG válido. Também grava os 3 gráficos em `results/` para conferência
+visual manual.
+
 ## Suíte completa
 
 ```bash
 make test
 ```
 
-Executa os testes do gerador, do motor, das métricas e da estatística
-disponíveis no repositório.
+Executa os testes do gerador, do motor, das métricas, da estatística e
+dos gráficos disponíveis no repositório.

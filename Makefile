@@ -35,7 +35,7 @@ OBJECTS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SOURCES))
 	test-workload-scenarios test-workload-config test-workload-debug \
 	test-experiment-seeds test-workload test-process-runtime \
 	test-simulator-states test-simulator-context test-simulator-workload \
-	test-simulator test-metrics-turnaround test-metrics test-stats test
+	test-simulator test-metrics-turnaround test-metrics test-stats test-plots test
 
 all: $(TARGET)
 
@@ -50,7 +50,7 @@ $(BUILD_DIR)/%.o: %.c
 run: $(TARGET)
 	$(call RUN_BIN,$(TARGET))
 
-test: test-workload test-simulator test-metrics test-stats
+test: test-workload test-simulator test-metrics test-stats test-plots
 
 test-workload: test-experiment-seeds test-workload-determinism \
 	test-workload-bursts test-workload-scenarios test-workload-config \
@@ -136,6 +136,9 @@ $(METRICS_TURNAROUND_TEST): tests/test_metrics_turnaround.c src/metrics.c includ
 
 test-stats:
 	$(PYTHON) tests/test_stats.py
+
+test-plots:
+	$(PYTHON) tests/test_plots.py
 
 clean:
 	@$(CLEAN_BUILD)
