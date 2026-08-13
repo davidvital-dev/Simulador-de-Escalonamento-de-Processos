@@ -27,6 +27,7 @@ SIMULATOR_STATES_TEST := $(BUILD_DIR)/tests/test_simulator_states$(EXEEXT)
 SIMULATOR_CONTEXT_TEST := $(BUILD_DIR)/tests/test_simulator_context$(EXEEXT)
 SIMULATOR_WORKLOAD_TEST := $(BUILD_DIR)/tests/test_simulator_workload$(EXEEXT)
 SCHEDULER_FCFS_TEST := $(BUILD_DIR)/tests/test_scheduler_fcfs$(EXEEXT)
+SCHEDULER_ROUND_ROBIN_TEST := $(BUILD_DIR)/tests/test_scheduler_round_robin$(EXEEXT)
 
 SOURCES := $(wildcard src/*.c) $(wildcard src/schedulers/*.c)
 OBJECTS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SOURCES))
@@ -35,7 +36,8 @@ OBJECTS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SOURCES))
 	test-workload-scenarios test-workload-config test-workload-debug \
 	test-experiment-seeds test-workload test-process-runtime \
 	test-simulator-states test-simulator-context test-simulator-workload \
-	test-simulator test-scheduler-fcfs test-schedulers test
+	test-simulator test-scheduler-fcfs test-scheduler-round-robin \
+	test-schedulers test
 
 all: $(TARGET)
 
@@ -132,7 +134,14 @@ $(SCHEDULER_FCFS_TEST): tests/test_scheduler_fcfs.c src/schedulers/fcfs.c src/si
 	@$(call MKDIR_P,$(patsubst %/,%,$(dir $@)))
 	$(CC) $(CFLAGS) tests/test_scheduler_fcfs.c src/schedulers/fcfs.c src/simulator.c src/process.c -o $@
 
-test-schedulers: test-scheduler-fcfs
+test-scheduler-round-robin: $(SCHEDULER_ROUND_ROBIN_TEST)
+	$(call RUN_BIN,$(SCHEDULER_ROUND_ROBIN_TEST))
+
+$(SCHEDULER_ROUND_ROBIN_TEST): tests/test_scheduler_round_robin.c src/schedulers/round_robin.c src/simulator.c src/process.c include/round_robin.h include/simulator.h include/scheduler.h include/process.h
+	@$(call MKDIR_P,$(patsubst %/,%,$(dir $@)))
+	$(CC) $(CFLAGS) tests/test_scheduler_round_robin.c src/schedulers/round_robin.c src/simulator.c src/process.c -o $@
+
+test-schedulers: test-scheduler-fcfs test-scheduler-round-robin
 
 clean:
 	@$(CLEAN_BUILD)
