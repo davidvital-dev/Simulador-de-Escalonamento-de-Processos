@@ -13,6 +13,13 @@ int metrics_turnaround(const Process *process);
  */
 int metrics_ideal_time(const Process *process);
 
+/*
+ * slowdown = turnaround / tempo_minimo_ideal.
+ * Retorna -1.0 quando o tempo minimo ideal for <= 0 (carga invalida ou
+ * processo sem rajadas), evitando divisao por zero.
+ */
+double metrics_slowdown(const Process *process);
+
 /* TODO(Henrique): definir RunMetrics e funções de cálculo/exportação. */
 void metrics_placeholder(void);
 

@@ -132,7 +132,7 @@ test-metrics-turnaround: $(METRICS_TURNAROUND_TEST)
 
 $(METRICS_TURNAROUND_TEST): tests/test_metrics_turnaround.c src/metrics.c include/metrics.h include/process.h
 	@$(call MKDIR_P,$(patsubst %/,%,$(dir $@)))
-	$(CC) $(CFLAGS) tests/test_metrics_turnaround.c src/metrics.c -o $@
+	$(CC) $(CFLAGS) tests/test_metrics_turnaround.c -o $@
 
 clean:
 	@$(CLEAN_BUILD)
