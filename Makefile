@@ -26,6 +26,7 @@ PROCESS_RUNTIME_TEST := $(BUILD_DIR)/tests/test_process_runtime$(EXEEXT)
 SIMULATOR_STATES_TEST := $(BUILD_DIR)/tests/test_simulator_states$(EXEEXT)
 SIMULATOR_CONTEXT_TEST := $(BUILD_DIR)/tests/test_simulator_context$(EXEEXT)
 SIMULATOR_WORKLOAD_TEST := $(BUILD_DIR)/tests/test_simulator_workload$(EXEEXT)
+SCHEDULER_FCFS_TEST := $(BUILD_DIR)/tests/test_scheduler_fcfs$(EXEEXT)
 
 SOURCES := $(wildcard src/*.c) $(wildcard src/schedulers/*.c)
 OBJECTS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SOURCES))
@@ -34,7 +35,7 @@ OBJECTS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SOURCES))
 	test-workload-scenarios test-workload-config test-workload-debug \
 	test-experiment-seeds test-workload test-process-runtime \
 	test-simulator-states test-simulator-context test-simulator-workload \
-	test-simulator test
+	test-simulator test-scheduler-fcfs test-schedulers test
 
 all: $(TARGET)
 
@@ -49,7 +50,7 @@ $(BUILD_DIR)/%.o: %.c
 run: $(TARGET)
 	$(call RUN_BIN,$(TARGET))
 
-test: test-workload test-simulator
+test: test-workload test-simulator test-schedulers
 
 test-workload: test-experiment-seeds test-workload-determinism \
 	test-workload-bursts test-workload-scenarios test-workload-config \
@@ -123,6 +124,15 @@ $(SIMULATOR_WORKLOAD_TEST): tests/test_simulator_workload.c src/simulator.c src/
 
 test-simulator: test-process-runtime test-simulator-states test-simulator-context \
 	test-simulator-workload
+
+test-scheduler-fcfs: $(SCHEDULER_FCFS_TEST)
+	$(call RUN_BIN,$(SCHEDULER_FCFS_TEST))
+
+$(SCHEDULER_FCFS_TEST): tests/test_scheduler_fcfs.c src/schedulers/fcfs.c src/simulator.c src/process.c include/fcfs.h include/simulator.h include/scheduler.h include/process.h
+	@$(call MKDIR_P,$(patsubst %/,%,$(dir $@)))
+	$(CC) $(CFLAGS) tests/test_scheduler_fcfs.c src/schedulers/fcfs.c src/simulator.c src/process.c -o $@
+
+test-schedulers: test-scheduler-fcfs
 
 clean:
 	@$(CLEAN_BUILD)
