@@ -234,6 +234,8 @@ aging_interval = 4
 initial_burst_estimate = 8
 ```
 
+Esses quatro valores ficam **congelados antes dos experimentos principais** e serão os mesmos nos quatro cenários e em todas as seeds. Eles não serão ajustados cenário a cenário depois de observar os resultados. Experimentos complementares de sensibilidade podem testar outros valores, desde que sejam apresentados separadamente e não substituam a configuração principal.
+
 O processo com **menor score** é escolhido.
 
 Interpretação dos parâmetros padrão:
