@@ -26,6 +26,9 @@ PROCESS_RUNTIME_TEST := $(BUILD_DIR)/tests/test_process_runtime$(EXEEXT)
 SIMULATOR_STATES_TEST := $(BUILD_DIR)/tests/test_simulator_states$(EXEEXT)
 SIMULATOR_CONTEXT_TEST := $(BUILD_DIR)/tests/test_simulator_context$(EXEEXT)
 SIMULATOR_WORKLOAD_TEST := $(BUILD_DIR)/tests/test_simulator_workload$(EXEEXT)
+SCHEDULER_FCFS_TEST := $(BUILD_DIR)/tests/test_scheduler_fcfs$(EXEEXT)
+SCHEDULER_ROUND_ROBIN_TEST := $(BUILD_DIR)/tests/test_scheduler_round_robin$(EXEEXT)
+SCHEDULER_PRIORITY_TEST := $(BUILD_DIR)/tests/test_scheduler_priority$(EXEEXT)
 METRICS_TURNAROUND_TEST := $(BUILD_DIR)/tests/test_metrics_turnaround$(EXEEXT)
 
 SOURCES := $(wildcard src/*.c) $(wildcard src/schedulers/*.c)
@@ -35,8 +38,9 @@ OBJECTS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SOURCES))
 	test-workload-scenarios test-workload-config test-workload-debug \
 	test-experiment-seeds test-workload test-process-runtime \
 	test-simulator-states test-simulator-context test-simulator-workload \
-	test-simulator test-metrics-turnaround test-metrics test-stats test-plots \
-	test-run-experiments test-validate-dataset test
+	test-simulator test-scheduler-fcfs test-scheduler-round-robin \
+	test-scheduler-priority test-schedulers test-metrics-turnaround test-metrics \
+	test-stats test-plots test-run-experiments test-validate-dataset test
 
 all: $(TARGET)
 
@@ -51,7 +55,7 @@ $(BUILD_DIR)/%.o: %.c
 run: $(TARGET)
 	$(call RUN_BIN,$(TARGET))
 
-test: test-workload test-simulator test-metrics test-stats test-plots test-run-experiments test-validate-dataset
+test: test-workload test-simulator test-schedulers test-metrics test-stats test-plots test-run-experiments test-validate-dataset
 
 test-workload: test-experiment-seeds test-workload-determinism \
 	test-workload-bursts test-workload-scenarios test-workload-config \
@@ -125,6 +129,29 @@ $(SIMULATOR_WORKLOAD_TEST): tests/test_simulator_workload.c src/simulator.c src/
 
 test-simulator: test-process-runtime test-simulator-states test-simulator-context \
 	test-simulator-workload
+
+test-scheduler-fcfs: $(SCHEDULER_FCFS_TEST)
+	$(call RUN_BIN,$(SCHEDULER_FCFS_TEST))
+
+$(SCHEDULER_FCFS_TEST): tests/test_scheduler_fcfs.c src/schedulers/fcfs.c src/simulator.c src/process.c include/fcfs.h include/simulator.h include/scheduler.h include/process.h
+	@$(call MKDIR_P,$(patsubst %/,%,$(dir $@)))
+	$(CC) $(CFLAGS) tests/test_scheduler_fcfs.c src/schedulers/fcfs.c src/simulator.c src/process.c -o $@
+
+test-scheduler-round-robin: $(SCHEDULER_ROUND_ROBIN_TEST)
+	$(call RUN_BIN,$(SCHEDULER_ROUND_ROBIN_TEST))
+
+$(SCHEDULER_ROUND_ROBIN_TEST): tests/test_scheduler_round_robin.c src/schedulers/round_robin.c src/simulator.c src/process.c include/round_robin.h include/simulator.h include/scheduler.h include/process.h
+	@$(call MKDIR_P,$(patsubst %/,%,$(dir $@)))
+	$(CC) $(CFLAGS) tests/test_scheduler_round_robin.c src/schedulers/round_robin.c src/simulator.c src/process.c -o $@
+
+test-scheduler-priority: $(SCHEDULER_PRIORITY_TEST)
+	$(call RUN_BIN,$(SCHEDULER_PRIORITY_TEST))
+
+$(SCHEDULER_PRIORITY_TEST): tests/test_scheduler_priority.c src/schedulers/priority.c src/simulator.c src/process.c include/priority.h include/simulator.h include/scheduler.h include/process.h
+	@$(call MKDIR_P,$(patsubst %/,%,$(dir $@)))
+	$(CC) $(CFLAGS) tests/test_scheduler_priority.c src/schedulers/priority.c src/simulator.c src/process.c -o $@
+
+test-schedulers: test-scheduler-fcfs test-scheduler-round-robin test-scheduler-priority
 
 test-metrics: test-metrics-turnaround
 
