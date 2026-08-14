@@ -29,6 +29,7 @@ SIMULATOR_WORKLOAD_TEST := $(BUILD_DIR)/tests/test_simulator_workload$(EXEEXT)
 SCHEDULER_FCFS_TEST := $(BUILD_DIR)/tests/test_scheduler_fcfs$(EXEEXT)
 SCHEDULER_ROUND_ROBIN_TEST := $(BUILD_DIR)/tests/test_scheduler_round_robin$(EXEEXT)
 SCHEDULER_PRIORITY_TEST := $(BUILD_DIR)/tests/test_scheduler_priority$(EXEEXT)
+METRICS_TURNAROUND_TEST := $(BUILD_DIR)/tests/test_metrics_turnaround$(EXEEXT)
 
 SOURCES := $(wildcard src/*.c) $(wildcard src/schedulers/*.c)
 OBJECTS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SOURCES))
@@ -38,7 +39,8 @@ OBJECTS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SOURCES))
 	test-experiment-seeds test-workload test-process-runtime \
 	test-simulator-states test-simulator-context test-simulator-workload \
 	test-simulator test-scheduler-fcfs test-scheduler-round-robin \
-	test-scheduler-priority test-schedulers test
+	test-scheduler-priority test-schedulers test-metrics-turnaround test-metrics \
+	test-stats test-plots test-run-experiments test-validate-dataset test
 
 all: $(TARGET)
 
@@ -53,7 +55,7 @@ $(BUILD_DIR)/%.o: %.c
 run: $(TARGET)
 	$(call RUN_BIN,$(TARGET))
 
-test: test-workload test-simulator test-schedulers
+test: test-workload test-simulator test-schedulers test-metrics test-stats test-plots test-run-experiments test-validate-dataset
 
 test-workload: test-experiment-seeds test-workload-determinism \
 	test-workload-bursts test-workload-scenarios test-workload-config \
@@ -150,6 +152,27 @@ $(SCHEDULER_PRIORITY_TEST): tests/test_scheduler_priority.c src/schedulers/prior
 	$(CC) $(CFLAGS) tests/test_scheduler_priority.c src/schedulers/priority.c src/simulator.c src/process.c -o $@
 
 test-schedulers: test-scheduler-fcfs test-scheduler-round-robin test-scheduler-priority
+
+test-metrics: test-metrics-turnaround
+
+test-metrics-turnaround: $(METRICS_TURNAROUND_TEST)
+	$(call RUN_BIN,$(METRICS_TURNAROUND_TEST))
+
+$(METRICS_TURNAROUND_TEST): tests/test_metrics_turnaround.c src/metrics.c include/metrics.h include/process.h
+	@$(call MKDIR_P,$(patsubst %/,%,$(dir $@)))
+	$(CC) $(CFLAGS) tests/test_metrics_turnaround.c -o $@
+
+test-stats:
+	$(PYTHON) tests/test_stats.py
+
+test-plots:
+	$(PYTHON) tests/test_plots.py
+
+test-run-experiments:
+	$(PYTHON) tests/test_run_experiments.py
+
+test-validate-dataset:
+	$(PYTHON) tests/test_validate_dataset.py
 
 clean:
 	@$(CLEAN_BUILD)

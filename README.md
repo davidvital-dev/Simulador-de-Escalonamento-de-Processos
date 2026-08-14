@@ -76,6 +76,14 @@ Limpeza:
 make clean
 ```
 
+## Scripts em Python (estatística e gráficos)
+
+Os scripts em `scripts/` (estatística e gráficos) dependem de `matplotlib`:
+
+```bash
+pip install -r requirements.txt
+```
+
 ## Convenções técnicas definidas
 
 As decisões detalhadas estão em `docs/decisoes-tecnicas.md`.

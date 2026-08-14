@@ -111,10 +111,91 @@ Gera 1.000 processos em cada um dos quatro cenários, cria uma cópia profunda d
 carga e verifica se o motor leva todos os processos até `FINISHED` sem alterar
 os valores originais das rajadas.
 
+## Testes de métricas
+
+### Turnaround e tempo mínimo ideal
+
+```bash
+make test-metrics-turnaround
+```
+
+Valida `metrics_turnaround` e `metrics_ideal_time` contra valores calculados à
+mão para 5 processos, incluindo um caso em que `remaining_time` diverge
+propositalmente de `duration` para garantir que o tempo mínimo ideal nunca
+leia os contadores decrementados durante a simulação.
+
+## Testes de estatística
+
+### Média, desvio padrão amostral, IC95% e tabela consolidada
+
+```bash
+make test-stats
+```
+
+Valida `scripts/stats.py` (`summarize` e `summarize_table`) com dados
+sintéticos calculados à mão, incluindo o caso de valores idênticos (desvio
+padrão amostral = 0, IC95% colapsa na própria média) e de amostra única
+(desvio padrão amostral tratado como 0 em vez de lançar exceção), sem
+depender do pipeline experimental nem de um CSV real.
+
+## Testes de gráficos
+
+### Gráficos comparativos com IC95%
+
+```bash
+make test-plots
+```
+
+Requer `matplotlib` (veja `requirements.txt`). Usa `stats.summarize_table`
+sobre uma carga fictícia para gerar a tabela consolidada e valida
+`scripts/plots.py`: confirma título, eixos (com unidade), legenda e ordem
+dos algoritmos em cada figura, e que os 3 arquivos PNG obrigatórios
+(turnaround médio, trocas de contexto, índice de Jain) são gravados como
+PNG válido. Também grava os 3 gráficos em `results/` para conferência
+visual manual.
+
+## Testes do pipeline experimental
+
+### Runner contra o binário fake
+
+```bash
+make test-run-experiments
+```
+
+O binário real ainda não aceita `--scenario/--seed/--algorithm/--processes`
+(`main.c` é um placeholder) e os escalonadores ainda não existem, então
+`scripts/run_experiments.py` é testado contra `scripts/fake_simulator.py`
+(usado só em testes; falha de propósito na seed `13`, ou com a flag
+`--force-fail`). Valida que o log de falhas (`failures.csv`) tem todos os
+campos exigidos (seed, cenário, algoritmo, código de saída, stderr) e que
+reexecutar o runner tenta só as combinações que faltaram/falharam — as
+que já tiveram sucesso não são repetidas, verificado pelo horário de
+modificação do arquivo de saída de cada combinação. Quando `main.c` e os
+escalonadores estiverem prontos, basta apontar `--binary` para o binário
+real; a lógica do runner não muda.
+
+### Cobertura do dataset e valores inválidos
+
+```bash
+make test-validate-dataset
+```
+
+Valida `scripts/validate_dataset.py` com datasets sintéticos construídos
+a partir de `run_experiments.build_combinations`: dataset completo passa
+sem apontar nada; falta ou duplicação de uma combinação
+cenário+algoritmo+seed é detectada exatamente; e `NaN`, infinito, valor
+não numérico, negativo em `turnaround_medio`/`trocas_contexto` e
+`jain_slowdown` fora de `[0, 1]` (a mesma convenção usada por
+`metrics.c`, `stats.py` e `plots.py`) são apontados por linha, com o
+motivo específico de cada campo, sem interromper a checagem das demais
+linhas.
+
 ## Suíte completa
 
 ```bash
 make test
 ```
 
-Executa os testes do gerador e do motor disponíveis no repositório.
+Executa os testes do gerador, do motor, das métricas, da estatística, dos
+gráficos, do pipeline experimental e da validação do dataset disponíveis
+no repositório.
