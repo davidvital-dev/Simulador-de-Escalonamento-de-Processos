@@ -15,18 +15,13 @@ static size_t priority_pick_next(const SchedulerProcessView *ready,
     }
 
     /*
-     * Convencao (docs/cenarios-de-carga.md): menor valor numerico == maior
-     * prioridade. Desempate (docs/decisoes-tecnicas.md): quem entrou
-     * primeiro na fila de prontos e, por fim, menor PID.
+     * Menor numero = maior prioridade. Em caso de empate, fica quem ja
+     * esta na fila ha mais tempo: por isso so trocamos de "melhor" quando
+     * a prioridade e de fato menor, nunca em empate.
      */
     best = 0;
     for (index = 1; index < ready_count; ++index) {
-        if (ready[index].priority < ready[best].priority ||
-            (ready[index].priority == ready[best].priority &&
-             ready[index].ready_since < ready[best].ready_since) ||
-            (ready[index].priority == ready[best].priority &&
-             ready[index].ready_since == ready[best].ready_since &&
-             ready[index].pid < ready[best].pid)) {
+        if (ready[index].priority < ready[best].priority) {
             best = index;
         }
     }

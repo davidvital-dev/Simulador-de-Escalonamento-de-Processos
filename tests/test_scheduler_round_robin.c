@@ -41,8 +41,7 @@ static void test_round_robin_rotates_on_quantum_expiry(void) {
 }
 
 static void test_round_robin_quantum_is_configurable(void) {
-    /* Quantum maior que a rajada => nenhuma preempcao acontece, o processo
-     * roda ate o fim (comportamento equivalente a FCFS neste cenario). */
+    /* Com um quantum bem grande, ninguem chega a ser interrompido. */
     Burst p1_bursts[] = {{BURST_CPU, 5, 5}};
     Burst p2_bursts[] = {{BURST_CPU, 1, 1}};
     Process processes[] = {
@@ -105,8 +104,7 @@ static void test_round_robin_quantum_two_alternates_processes(void) {
     config.context_switch_cost = 0;
     assert(simulator_run(processes, 2, &config, &scheduler, &result));
 
-    /* PID 1 e PID 2 se alternam a cada 2 ticks: P1(0-2) P2(2-4) P1(4-6)
-     * P2(6-8). */
+    /* Os dois se revezam a cada 2 ticks ate terminar. */
     assert(result.context_switches == 3);
     assert(processes[0].finish_time == 6);
     assert(processes[1].finish_time == 8);
@@ -147,10 +145,8 @@ static void test_round_robin_handles_io_during_execution(void) {
     config.context_switch_cost = 0;
     assert(simulator_run(processes, 2, &config, &scheduler, &result));
 
-    /* PID 1 roda 2 ticks (t0-2) e bloqueia para E/S (retorna em t=5). PID 2
-     * assume a CPU, roda 2 ticks (t2-4, quantum expira) e, como e o unico
-     * pronto, continua ate terminar em t=5. No mesmo instante a E/S de
-     * PID 1 conclui e ele executa sua ultima rajada (t5-6). */
+    /* PID 1 roda um pouco e vai pra E/S; PID 2 assume a CPU enquanto isso
+     * e, quando PID 1 volta, os dois terminam em sequencia. */
     assert(result.completed_processes == 2);
     assert(processes[1].finish_time == 5);
     assert(processes[0].finish_time == 6);
@@ -180,8 +176,7 @@ static void test_round_robin_no_artificial_preemption_at_quantum_boundary(void) 
             .burst_count = 1
         }
     };
-    /* Quantum igual a duracao da rajada de PID 1: ele deve terminar
-     * exatamente no limite do quantum, sem preempcao artificial. */
+    /* PID 1 termina bem na hora que o quantum dele acaba. */
     RoundRobinContext ctx = {.quantum = 2};
     SimulationConfig config = simulator_default_config();
     SimulationResult result;
@@ -192,8 +187,7 @@ static void test_round_robin_no_artificial_preemption_at_quantum_boundary(void) 
 
     assert(processes[0].finish_time == 2);
     assert(processes[1].finish_time == 3);
-    /* Uma unica troca (PID 1 -> PID 2); preempcao artificial geraria uma
-     * troca extra de PID 1 para ele mesmo. */
+    /* Se tivesse preempcao artificial aqui, apareceria uma troca extra. */
     assert(result.context_switches == 1);
 }
 
@@ -226,8 +220,7 @@ static void test_round_robin_ties_break_deterministically(void) {
     config.context_switch_cost = 0;
     assert(simulator_run(processes, 2, &config, &scheduler, &result));
 
-    /* Mesma chegada: quem e admitido primeiro na fila (menor PID) executa
-     * primeiro, sempre na mesma ordem. */
+    /* Chegando junto, o PID menor entra primeiro e roda primeiro. */
     assert(processes[1].finish_time == 1);
     assert(processes[0].finish_time == 2);
 }

@@ -8,12 +8,7 @@ static size_t round_robin_pick_next(const SchedulerProcessView *ready,
     (void) current_time;
     (void) context;
 
-    /*
-     * A propria ordem da fila circular determina o proximo processo:
-     * chegadas, retornos de E/S e processos preemptados entram no final
-     * conforme a ordem em que os eventos sao processados no tick
-     * (docs/decisoes-tecnicas.md).
-     */
+    /* A fila ja e circular: o proximo e sempre quem esta na frente. */
     return ready_count > 0 ? 0 : SCHEDULER_NO_SELECTION;
 }
 

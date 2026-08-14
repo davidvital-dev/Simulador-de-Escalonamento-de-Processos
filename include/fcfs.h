@@ -3,11 +3,7 @@
 
 #include "scheduler.h"
 
-/*
- * FCFS nao preemptivo. A fila de prontos ja preserva a ordem de entrada
- * (E/S concluida antes de novas chegadas, dentro do mesmo tick), entao
- * basta selecionar sempre a posicao 0.
- */
+/* FCFS nao preemptivo: sempre pega o processo que esta a mais tempo na fila. */
 Scheduler fcfs_scheduler(void);
 
 #endif

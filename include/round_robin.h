@@ -7,11 +7,7 @@ typedef struct {
     int quantum;
 } RoundRobinContext;
 
-/*
- * Quantum principal dos experimentos: 4 ticks (docs/decisoes-tecnicas.md).
- * O chamador possui o contexto e deve mante-lo vivo durante toda a execucao
- * do simulador.
- */
+/* Quem chama precisa manter o context vivo durante toda a simulacao. */
 Scheduler round_robin_scheduler(RoundRobinContext *context);
 
 #endif
