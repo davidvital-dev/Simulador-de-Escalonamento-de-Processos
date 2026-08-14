@@ -76,9 +76,169 @@ static void test_round_robin_quantum_is_configurable(void) {
     assert(result.context_switches == 1);
 }
 
+static void test_round_robin_quantum_two_alternates_processes(void) {
+    Burst p1_bursts[] = {{BURST_CPU, 4, 4}};
+    Burst p2_bursts[] = {{BURST_CPU, 4, 4}};
+    Process processes[] = {
+        {
+            .pid = 1,
+            .arrival_time = 0,
+            .priority = 0,
+            .state = PROCESS_NEW,
+            .bursts = p1_bursts,
+            .burst_count = 1
+        },
+        {
+            .pid = 2,
+            .arrival_time = 0,
+            .priority = 0,
+            .state = PROCESS_NEW,
+            .bursts = p2_bursts,
+            .burst_count = 1
+        }
+    };
+    RoundRobinContext ctx = {.quantum = 2};
+    SimulationConfig config = simulator_default_config();
+    SimulationResult result;
+    Scheduler scheduler = round_robin_scheduler(&ctx);
+
+    config.context_switch_cost = 0;
+    assert(simulator_run(processes, 2, &config, &scheduler, &result));
+
+    /* PID 1 e PID 2 se alternam a cada 2 ticks: P1(0-2) P2(2-4) P1(4-6)
+     * P2(6-8). */
+    assert(result.context_switches == 3);
+    assert(processes[0].finish_time == 6);
+    assert(processes[1].finish_time == 8);
+    assert(processes[0].total_cpu_executed == 4);
+    assert(processes[1].total_cpu_executed == 4);
+}
+
+static void test_round_robin_handles_io_during_execution(void) {
+    Burst p1_bursts[] = {
+        {BURST_CPU, 2, 2},
+        {BURST_IO, 3, 3},
+        {BURST_CPU, 1, 1}
+    };
+    Burst p2_bursts[] = {{BURST_CPU, 3, 3}};
+    Process processes[] = {
+        {
+            .pid = 1,
+            .arrival_time = 0,
+            .priority = 0,
+            .state = PROCESS_NEW,
+            .bursts = p1_bursts,
+            .burst_count = 3
+        },
+        {
+            .pid = 2,
+            .arrival_time = 0,
+            .priority = 0,
+            .state = PROCESS_NEW,
+            .bursts = p2_bursts,
+            .burst_count = 1
+        }
+    };
+    RoundRobinContext ctx = {.quantum = 2};
+    SimulationConfig config = simulator_default_config();
+    SimulationResult result;
+    Scheduler scheduler = round_robin_scheduler(&ctx);
+
+    config.context_switch_cost = 0;
+    assert(simulator_run(processes, 2, &config, &scheduler, &result));
+
+    /* PID 1 roda 2 ticks (t0-2) e bloqueia para E/S (retorna em t=5). PID 2
+     * assume a CPU, roda 2 ticks (t2-4, quantum expira) e, como e o unico
+     * pronto, continua ate terminar em t=5. No mesmo instante a E/S de
+     * PID 1 conclui e ele executa sua ultima rajada (t5-6). */
+    assert(result.completed_processes == 2);
+    assert(processes[1].finish_time == 5);
+    assert(processes[0].finish_time == 6);
+    assert(processes[0].total_cpu_executed == 3);
+    assert(processes[1].total_cpu_executed == 3);
+    assert(result.context_switches == 2);
+}
+
+static void test_round_robin_no_artificial_preemption_at_quantum_boundary(void) {
+    Burst p1_bursts[] = {{BURST_CPU, 2, 2}};
+    Burst p2_bursts[] = {{BURST_CPU, 1, 1}};
+    Process processes[] = {
+        {
+            .pid = 1,
+            .arrival_time = 0,
+            .priority = 0,
+            .state = PROCESS_NEW,
+            .bursts = p1_bursts,
+            .burst_count = 1
+        },
+        {
+            .pid = 2,
+            .arrival_time = 0,
+            .priority = 0,
+            .state = PROCESS_NEW,
+            .bursts = p2_bursts,
+            .burst_count = 1
+        }
+    };
+    /* Quantum igual a duracao da rajada de PID 1: ele deve terminar
+     * exatamente no limite do quantum, sem preempcao artificial. */
+    RoundRobinContext ctx = {.quantum = 2};
+    SimulationConfig config = simulator_default_config();
+    SimulationResult result;
+    Scheduler scheduler = round_robin_scheduler(&ctx);
+
+    config.context_switch_cost = 0;
+    assert(simulator_run(processes, 2, &config, &scheduler, &result));
+
+    assert(processes[0].finish_time == 2);
+    assert(processes[1].finish_time == 3);
+    /* Uma unica troca (PID 1 -> PID 2); preempcao artificial geraria uma
+     * troca extra de PID 1 para ele mesmo. */
+    assert(result.context_switches == 1);
+}
+
+static void test_round_robin_ties_break_deterministically(void) {
+    Burst p1_bursts[] = {{BURST_CPU, 1, 1}};
+    Burst p2_bursts[] = {{BURST_CPU, 1, 1}};
+    Process processes[] = {
+        {
+            .pid = 9,
+            .arrival_time = 0,
+            .priority = 0,
+            .state = PROCESS_NEW,
+            .bursts = p1_bursts,
+            .burst_count = 1
+        },
+        {
+            .pid = 3,
+            .arrival_time = 0,
+            .priority = 0,
+            .state = PROCESS_NEW,
+            .bursts = p2_bursts,
+            .burst_count = 1
+        }
+    };
+    RoundRobinContext ctx = {.quantum = 5};
+    SimulationConfig config = simulator_default_config();
+    SimulationResult result;
+    Scheduler scheduler = round_robin_scheduler(&ctx);
+
+    config.context_switch_cost = 0;
+    assert(simulator_run(processes, 2, &config, &scheduler, &result));
+
+    /* Mesma chegada: quem e admitido primeiro na fila (menor PID) executa
+     * primeiro, sempre na mesma ordem. */
+    assert(processes[1].finish_time == 1);
+    assert(processes[0].finish_time == 2);
+}
+
 int main(void) {
     test_round_robin_rotates_on_quantum_expiry();
     test_round_robin_quantum_is_configurable();
+    test_round_robin_quantum_two_alternates_processes();
+    test_round_robin_handles_io_during_execution();
+    test_round_robin_no_artificial_preemption_at_quantum_boundary();
+    test_round_robin_ties_break_deterministically();
 
     puts("OK: Round Robin roda em fatias de tempo com quantum configuravel.");
     return 0;
