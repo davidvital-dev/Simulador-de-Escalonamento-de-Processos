@@ -30,6 +30,7 @@ SCHEDULER_FCFS_TEST := $(BUILD_DIR)/tests/test_scheduler_fcfs$(EXEEXT)
 SCHEDULER_ROUND_ROBIN_TEST := $(BUILD_DIR)/tests/test_scheduler_round_robin$(EXEEXT)
 SCHEDULER_PRIORITY_TEST := $(BUILD_DIR)/tests/test_scheduler_priority$(EXEEXT)
 SCHEDULER_PROPOSED_TEST := $(BUILD_DIR)/tests/test_scheduler_proposed$(EXEEXT)
+SCHEDULER_PROPOSED_INTEGRATION_TEST := $(BUILD_DIR)/tests/test_scheduler_proposed_integration$(EXEEXT)
 METRICS_TURNAROUND_TEST := $(BUILD_DIR)/tests/test_metrics_turnaround$(EXEEXT)
 
 SOURCES := $(wildcard src/*.c) $(wildcard src/schedulers/*.c)
@@ -40,7 +41,8 @@ OBJECTS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SOURCES))
 	test-experiment-seeds test-workload test-process-runtime \
 	test-simulator-states test-simulator-context test-simulator-workload \
 	test-simulator test-scheduler-fcfs test-scheduler-round-robin \
-	test-scheduler-priority test-scheduler-proposed test-schedulers \
+	test-scheduler-priority test-scheduler-proposed \
+	test-scheduler-proposed-integration test-schedulers \
 	test-metrics-turnaround test-metrics test-stats test-plots \
 	test-run-experiments test-validate-dataset test
 
@@ -156,12 +158,19 @@ $(SCHEDULER_PRIORITY_TEST): tests/test_scheduler_priority.c src/schedulers/prior
 test-scheduler-proposed: $(SCHEDULER_PROPOSED_TEST)
 	$(call RUN_BIN,$(SCHEDULER_PROPOSED_TEST))
 
-$(SCHEDULER_PROPOSED_TEST): tests/test_scheduler_proposed.c src/schedulers/proposed.c src/simulator.c src/process.c include/proposed.h include/simulator.h include/scheduler.h include/process.h
+$(SCHEDULER_PROPOSED_TEST): tests/test_scheduler_proposed.c src/schedulers/proposed.c include/proposed.h include/scheduler.h include/process.h
 	@$(call MKDIR_P,$(patsubst %/,%,$(dir $@)))
-	$(CC) $(CFLAGS) tests/test_scheduler_proposed.c src/schedulers/proposed.c src/simulator.c src/process.c -o $@
+	$(CC) $(CFLAGS) tests/test_scheduler_proposed.c src/schedulers/proposed.c -o $@
+
+test-scheduler-proposed-integration: $(SCHEDULER_PROPOSED_INTEGRATION_TEST)
+	$(call RUN_BIN,$(SCHEDULER_PROPOSED_INTEGRATION_TEST))
+
+$(SCHEDULER_PROPOSED_INTEGRATION_TEST): tests/test_scheduler_proposed_integration.c src/schedulers/proposed.c src/simulator.c src/process.c src/workload.c include/proposed.h include/simulator.h include/scheduler.h include/process.h include/workload.h
+	@$(call MKDIR_P,$(patsubst %/,%,$(dir $@)))
+	$(CC) $(CFLAGS) tests/test_scheduler_proposed_integration.c src/schedulers/proposed.c src/simulator.c src/process.c src/workload.c -o $@
 
 test-schedulers: test-scheduler-fcfs test-scheduler-round-robin test-scheduler-priority \
-	test-scheduler-proposed
+	test-scheduler-proposed test-scheduler-proposed-integration
 
 test-metrics: test-metrics-turnaround
 
