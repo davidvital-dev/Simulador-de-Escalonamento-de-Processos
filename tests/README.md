@@ -13,6 +13,7 @@ Casos mínimos:
 - FCFS sem preempção;
 - Round Robin com quantum pequeno;
 - prioridade não preemptiva;
+- AHR com aging e histórico observado;
 - determinismo da seed;
 - métricas calculadas à mão.
 
@@ -111,6 +112,38 @@ Gera 1.000 processos em cada um dos quatro cenários, cria uma cópia profunda d
 carga e verifica se o motor leva todos os processos até `FINISHED` sem alterar
 os valores originais das rajadas.
 
+## Testes dos escalonadores
+
+Para executar FCFS, Round Robin, Prioridade e o algoritmo próprio:
+
+```bash
+make test-schedulers
+```
+
+### Algoritmo próprio AHR
+
+A regra de seleção isolada pode ser validada com:
+
+```bash
+make test-scheduler-proposed
+```
+
+Esse teste cobre parâmetros padrão e inválidos, influência da prioridade,
+histórico de rajadas já concluídas, aging capaz de superar prioridade baixa,
+desempate pela ordem da fila e ausência de seleção quando `READY` está vazia.
+
+A integração com o motor e o gerador pode ser validada com:
+
+```bash
+make test-scheduler-proposed-integration
+```
+
+Esse teste confirma que o AHR é não preemptivo, usa o histórico observado após
+retorno de E/S, termina cargas dos quatro cenários obrigatórios e produz o mesmo
+resultado quando a mesma seed é repetida. O escalonador recebe somente
+`SchedulerProcessView`, que não contém duração da rajada atual nem rajadas
+futuras.
+
 ## Testes de métricas
 
 ### Turnaround e tempo mínimo ideal
@@ -162,17 +195,14 @@ visual manual.
 make test-run-experiments
 ```
 
-O binário real ainda não aceita `--scenario/--seed/--algorithm/--processes`
-(`main.c` é um placeholder) e os escalonadores ainda não existem, então
-`scripts/run_experiments.py` é testado contra `scripts/fake_simulator.py`
-(usado só em testes; falha de propósito na seed `13`, ou com a flag
-`--force-fail`). Valida que o log de falhas (`failures.csv`) tem todos os
-campos exigidos (seed, cenário, algoritmo, código de saída, stderr) e que
-reexecutar o runner tenta só as combinações que faltaram/falharam — as
-que já tiveram sucesso não são repetidas, verificado pelo horário de
-modificação do arquivo de saída de cada combinação. Quando `main.c` e os
-escalonadores estiverem prontos, basta apontar `--binary` para o binário
-real; a lógica do runner não muda.
+O `main.c` real ainda não expõe a interface final
+`--scenario/--seed/--algorithm/--processes`. Por isso,
+`scripts/run_experiments.py` continua sendo testado contra
+`scripts/fake_simulator.py` (usado só em testes; falha de propósito na seed
+`13`, ou com a flag `--force-fail`). O teste valida o log de falhas
+(`failures.csv`) e a reexecução apenas das combinações ausentes/falhas. Quando
+a CLI real for integrada, basta apontar `--binary` para o executável final; a
+lógica do runner não precisa mudar.
 
 ### Cobertura do dataset e valores inválidos
 
@@ -196,6 +226,6 @@ linhas.
 make test
 ```
 
-Executa os testes do gerador, do motor, das métricas, da estatística, dos
-gráficos, do pipeline experimental e da validação do dataset disponíveis
-no repositório.
+Executa os testes do gerador, do motor, dos quatro escalonadores, das métricas,
+da estatística, dos gráficos, do pipeline experimental e da validação do
+dataset disponíveis no repositório.
