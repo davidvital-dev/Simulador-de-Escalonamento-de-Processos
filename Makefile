@@ -158,9 +158,9 @@ $(SCHEDULER_PRIORITY_TEST): tests/test_scheduler_priority.c src/schedulers/prior
 test-scheduler-proposed: $(SCHEDULER_PROPOSED_TEST)
 	$(call RUN_BIN,$(SCHEDULER_PROPOSED_TEST))
 
-$(SCHEDULER_PROPOSED_TEST): tests/test_scheduler_proposed.c src/schedulers/proposed.c include/proposed.h include/scheduler.h include/process.h
+$(SCHEDULER_PROPOSED_TEST): tests/test_scheduler_proposed.c src/schedulers/proposed.c src/simulator.c src/process.c include/proposed.h include/simulator.h include/scheduler.h include/process.h
 	@$(call MKDIR_P,$(patsubst %/,%,$(dir $@)))
-	$(CC) $(CFLAGS) tests/test_scheduler_proposed.c src/schedulers/proposed.c -o $@
+	$(CC) $(CFLAGS) tests/test_scheduler_proposed.c src/schedulers/proposed.c src/simulator.c src/process.c -o $@
 
 test-scheduler-proposed-integration: $(SCHEDULER_PROPOSED_INTEGRATION_TEST)
 	$(call RUN_BIN,$(SCHEDULER_PROPOSED_INTEGRATION_TEST))
