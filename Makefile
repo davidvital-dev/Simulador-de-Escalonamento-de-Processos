@@ -44,7 +44,7 @@ OBJECTS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SOURCES))
 	test-scheduler-priority test-scheduler-proposed \
 	test-scheduler-proposed-integration test-schedulers \
 	test-metrics-turnaround test-metrics test-stats test-plots \
-	test-run-experiments test-validate-dataset test
+	test-run-experiments test-validate-dataset test-analyze-results test
 
 all: $(TARGET)
 
@@ -59,7 +59,7 @@ $(BUILD_DIR)/%.o: %.c
 run: $(TARGET)
 	$(call RUN_BIN,$(TARGET))
 
-test: test-workload test-simulator test-schedulers test-metrics test-stats test-plots test-run-experiments test-validate-dataset
+test: test-workload test-simulator test-schedulers test-metrics test-stats test-plots test-run-experiments test-validate-dataset test-analyze-results
 
 test-workload: test-experiment-seeds test-workload-determinism \
 	test-workload-bursts test-workload-scenarios test-workload-config \
@@ -192,6 +192,9 @@ test-run-experiments:
 
 test-validate-dataset:
 	$(PYTHON) tests/test_validate_dataset.py
+
+test-analyze-results:
+	$(PYTHON) tests/test_analyze_results.py
 
 clean:
 	@$(CLEAN_BUILD)
