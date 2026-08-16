@@ -157,7 +157,7 @@ A chegada de um processo mais prioritário não interrompe o processo atualmente
 
 ### Algoritmo próprio
 
-O critério será definido junto com a política final do algoritmo próprio e registrado nesta seção antes dos experimentos finais.
+O algoritmo próprio preserva a ordem da fila quando dois processos obtêm o mesmo score. Como a fila é montada deterministicamente pelo motor, isso também torna o desempate determinístico; o PID já é usado pelo motor para ordenar eventos simultâneos quando necessário.
 
 ## Índice de Jain
 
@@ -175,22 +175,108 @@ Jain (%) = Jain * 100
 
 Valores próximos de `1.0` / `100%` representam maior igualdade entre os slowdowns.
 
-## Algoritmo próprio
+## Algoritmo próprio: AHR
 
-Ainda será fechado na issue específica do algoritmo próprio.
+O algoritmo próprio da equipe será chamado de **AHR - Aging com Histórico de Rajadas**. No código e no pipeline experimental ele continua identificado como `proposed` para manter uma interface simples com os demais algoritmos.
 
-Direção inicial aprovada para investigação: combinar prioridade dinâmica/aging com informações disponíveis no estado atual e no histórico já observado, buscando reduzir starvation sem degradar excessivamente o turnaround.
+### Problema que tenta resolver
 
-O algoritmo não poderá acessar a duração exata de rajadas futuras ainda não observadas.
+O AHR busca reduzir o risco de starvation causado por prioridade estática sem abandonar completamente a prioridade original. Ao mesmo tempo, usa apenas o histórico de CPU já observado para favorecer processos que demonstraram comportamento de rajadas curtas, tentando evitar uma degradação excessiva do turnaround.
 
-Antes da implementação final, esta seção deverá registrar:
+### Informações usadas em cada decisão
 
-- problema que tenta resolver;
-- informações usadas;
-- regra de seleção;
-- comportamento preemptivo ou não;
-- hipótese de melhoria;
-- limitações esperadas.
+Para cada processo em `READY`, o algoritmo pode usar somente informações disponíveis naquele instante:
+
+- prioridade base do processo;
+- instante em que entrou pela última vez em `READY` (`ready_since`);
+- tempo atual da simulação;
+- total de CPU já executado pelo processo;
+- quantidade de rajadas de CPU já concluídas.
+
+O algoritmo **não lê** a duração da rajada de CPU atual nem qualquer rajada futura, não consulta `Burst.duration` e não consulta `remaining_time`. A interface `SchedulerProcessView` usada pelo escalonador não expõe essas informações.
+
+### Estimativa baseada no histórico
+
+Quando o processo já concluiu pelo menos uma rajada de CPU, sua estimativa histórica é a média inteira das rajadas observadas:
+
+```text
+historico = total_cpu_executed / completed_cpu_bursts
+```
+
+Para processos que ainda não concluíram nenhuma rajada, usa-se uma estimativa inicial fixa e configurável. O valor padrão é `8 ticks`. Essa estimativa é um parâmetro do algoritmo e não depende da rajada real futura.
+
+### Aging
+
+O tempo de espera atual é:
+
+```text
+espera = max(0, tempo_atual - ready_since)
+```
+
+A cada `aging_interval` ticks de espera, o processo recebe um ponto de bônus no score. O intervalo padrão é `4 ticks`.
+
+### Regra de seleção
+
+Para cada processo pronto, calcula-se:
+
+```text
+score = priority_weight * prioridade
+      + burst_weight * historico
+      - floor(espera / aging_interval)
+```
+
+Parâmetros padrão:
+
+```text
+priority_weight = 8
+burst_weight = 1
+aging_interval = 4
+initial_burst_estimate = 8
+```
+
+Esses quatro valores ficam **congelados antes dos experimentos principais** e serão os mesmos nos quatro cenários e em todas as seeds. Eles não serão ajustados cenário a cenário depois de observar os resultados. Experimentos complementares de sensibilidade podem testar outros valores, desde que sejam apresentados separadamente e não substituam a configuração principal.
+
+O processo com **menor score** é escolhido.
+
+Interpretação dos parâmetros padrão:
+
+- uma prioridade numericamente pior aumenta o score e torna o processo menos favorecido inicialmente;
+- um histórico de rajadas menores reduz a desvantagem relativa no turnaround;
+- o termo de aging cresce sem limite com o tempo de espera e, portanto, progressivamente compensa prioridade baixa e histórico de rajadas longas.
+
+Em empate de score, vence quem já está antes na fila de prontos.
+
+### Preempção
+
+O AHR é **não preemptivo**. A decisão é refeita quando a CPU fica disponível após término, bloqueio ou ociosidade, mas a chegada de um processo com score melhor não interrompe quem já está executando.
+
+Essa escolha evita criar trocas de contexto adicionais apenas por mudanças de score e permite comparar o efeito da regra de seleção sem misturá-lo com uma política agressiva de preempção.
+
+### Hipótese de melhoria
+
+A hipótese principal é que o aging aumente a igualdade entre slowdowns em relação à Prioridade não preemptiva, melhorando o índice de Jain principalmente no cenário de prioridades desbalanceadas. O componente de histórico tenta preservar ou melhorar turnaround ao favorecer processos que já demonstraram rajadas curtas de CPU.
+
+Como o algoritmo é não preemptivo, espera-se que o número de trocas de contexto permaneça mais próximo de FCFS/Prioridade do que de Round Robin.
+
+Essas são hipóteses; os experimentos finais determinarão se elas realmente aparecem nas métricas.
+
+### Inspiração e modificação
+
+O AHR combina duas ideias clássicas de escalonamento:
+
+- **aging**, usado para aumentar progressivamente a chance de processos que aguardam por muito tempo;
+- **favorecimento de rajadas curtas**, inspirado na motivação de políticas como SJF/SRTF e em técnicas de previsão de rajadas.
+
+A modificação da equipe é não usar conhecimento da próxima rajada. Em vez disso, o AHR usa exclusivamente a média das rajadas de CPU que o processo já concluiu e mistura essa informação com prioridade base e aging em um único score configurável.
+
+### Limitações esperadas
+
+- a estimativa inicial fixa pode favorecer ou prejudicar processos novos dependendo do cenário;
+- a média de todo o histórico reage lentamente se o comportamento do processo mudar de fase;
+- os pesos são parâmetros empíricos e podem influenciar fortemente o resultado;
+- por ser não preemptivo, o algoritmo não consegue interromper uma rajada longa que já começou;
+- o AHR reduz o risco de starvation apenas nos pontos em que a CPU volta a ficar disponível;
+- favorecer histórico curto pode prejudicar processos CPU-bound, embora o aging tenda a compensar essa desvantagem com o tempo.
 
 ## Regra de consistência
 
