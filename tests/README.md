@@ -189,20 +189,27 @@ visual manual.
 
 ## Testes do pipeline experimental
 
+### Interface real do simulador
+
+```bash
+make test-main-cli
+```
+
+Compila o executável real e valida ajuda, erros de entrada, determinismo,
+parâmetros configuráveis e as 16 combinações entre quatro cenários e quatro
+algoritmos. Também confirma que `stdout` contém somente a linha CSV esperada.
+
 ### Runner contra o binário fake
 
 ```bash
 make test-run-experiments
 ```
 
-O `main.c` real ainda não expõe a interface final
-`--scenario/--seed/--algorithm/--processes`. Por isso,
-`scripts/run_experiments.py` continua sendo testado contra
+`scripts/run_experiments.py` é testado isoladamente contra
 `scripts/fake_simulator.py` (usado só em testes; falha de propósito na seed
-`13`, ou com a flag `--force-fail`). O teste valida o log de falhas
-(`failures.csv`) e a reexecução apenas das combinações ausentes/falhas. Quando
-a CLI real for integrada, basta apontar `--binary` para o executável final; a
-lógica do runner não precisa mudar.
+`13`, ou com a flag `--force-fail`). O teste valida o log de falhas e a
+reexecução apenas das combinações ausentes. A interface correspondente no
+executável real é coberta separadamente por `test-main-cli`.
 
 ### Cobertura do dataset e valores inválidos
 
