@@ -70,6 +70,56 @@ Executável gerado:
 ./build/simulator
 ```
 
+No Windows, o executável é `build/simulator.exe`.
+
+## Execução individual
+
+Exemplo com o cenário equilibrado, FCFS, seed `1` e 1.000 processos:
+
+```bash
+./build/simulator --scenario balanced --algorithm fcfs --seed 1 --processes 1000
+```
+
+Valores aceitos:
+
+- `--scenario`: `balanced`, `io-bound`, `cpu-bound` ou `priority-imbalanced`;
+- `--algorithm`: `fcfs`, `rr`, `priority` ou `proposed`;
+- `--seed`: inteiro entre `0` e `UINT_MAX`;
+- `--processes`: inteiro positivo;
+- `--quantum`: inteiro positivo, padrão `4`;
+- `--context-switch-cost`: inteiro não negativo, padrão `2`;
+- `--debug`: envia as transições da simulação para `stderr`.
+
+A saída padrão contém exatamente uma linha CSV, sem cabeçalho:
+
+```text
+seed,cenario,algoritmo,n_processos,turnaround_medio,trocas_contexto,jain_slowdown
+```
+
+Ajuda completa:
+
+```bash
+./build/simulator --help
+```
+
+## Experimentos principais
+
+O comando abaixo usa, por padrão, os quatro cenários, os quatro algoritmos, as
+100 seeds de `config/experiment-seeds.txt` e 1.000 processos por execução:
+
+```bash
+python scripts/run_experiments.py --binary ./build/simulator --processes 1000
+```
+
+No Windows, substitua o binário por `build/simulator.exe`. O runner preserva as
+execuções concluídas e, quando chamado novamente, tenta apenas as combinações
+faltantes. Para consolidar, validar a cobertura, calcular IC95% e gerar os três
+gráficos obrigatórios:
+
+```bash
+python scripts/analyze_results.py
+```
+
 Limpeza:
 
 ```bash

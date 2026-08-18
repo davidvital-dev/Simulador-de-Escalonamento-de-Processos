@@ -2,12 +2,9 @@
 """Binário fake do simulador, usado só para testar o pipeline.
 
 Imita a interface de linha de comando que o `main.c` real vai expor
-(`--scenario`, `--seed`, `--algorithm`, `--processes`) sem depender do
-motor real nem dos escalonadores, que ainda não existem. Serve para
-`scripts/run_experiments.py` ser escrito e testado contra um binário
-externo de verdade (via subprocess), pronto para trocar de alvo quando o
-binário real aceitar os mesmos argumentos -- nenhuma lógica do runner
-precisa mudar, só o caminho passado em `--binary`.
+(`--scenario`, `--seed`, `--algorithm`, `--processes`) sem executar o motor
+real. Serve para testar falhas, retomada e persistência de resultados do
+`scripts/run_experiments.py` de forma rápida e controlada.
 
 Convenção de falha controlada, para testar detecção de erros no runner:
 - a(s) seed(s) em `FAKE_SIMULATOR_ALWAYS_FAIL_SEEDS` (variável de

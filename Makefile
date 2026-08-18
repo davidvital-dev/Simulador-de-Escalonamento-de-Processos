@@ -5,9 +5,15 @@ BUILD_DIR := build
 ifeq ($(OS),Windows_NT)
 PYTHON ?= py
 EXEEXT := .exe
+ifneq ($(findstring sh,$(notdir $(SHELL))),)
+MKDIR_P = mkdir -p "$(1)"
+RUN_BIN = ./$(1)
+CLEAN_BUILD = rm -rf "$(BUILD_DIR)"
+else
 MKDIR_P = if not exist "$(subst /,\,$(1))" mkdir "$(subst /,\,$(1))"
 RUN_BIN = $(subst /,\,$(1))
 CLEAN_BUILD = if exist "$(subst /,\,$(BUILD_DIR))" rmdir /S /Q "$(subst /,\,$(BUILD_DIR))"
+endif
 else
 PYTHON ?= python3
 EXEEXT :=
@@ -44,7 +50,8 @@ OBJECTS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SOURCES))
 	test-scheduler-priority test-scheduler-proposed \
 	test-scheduler-proposed-integration test-schedulers \
 	test-metrics-turnaround test-metrics test-stats test-plots \
-	test-run-experiments test-validate-dataset test-analyze-results test
+	test-run-experiments test-main-cli test-validate-dataset \
+	test-analyze-results test
 
 all: $(TARGET)
 
@@ -59,7 +66,7 @@ $(BUILD_DIR)/%.o: %.c
 run: $(TARGET)
 	$(call RUN_BIN,$(TARGET))
 
-test: test-workload test-simulator test-schedulers test-metrics test-stats test-plots test-run-experiments test-validate-dataset test-analyze-results
+test: test-workload test-simulator test-schedulers test-metrics test-stats test-plots test-run-experiments test-main-cli test-validate-dataset test-analyze-results
 
 test-workload: test-experiment-seeds test-workload-determinism \
 	test-workload-bursts test-workload-scenarios test-workload-config \
@@ -189,6 +196,9 @@ test-plots:
 
 test-run-experiments:
 	$(PYTHON) tests/test_run_experiments.py
+
+test-main-cli: $(TARGET)
+	$(PYTHON) tests/test_main_cli.py $(TARGET)
 
 test-validate-dataset:
 	$(PYTHON) tests/test_validate_dataset.py

@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""Valida o runner do pipeline contra o binário fake, sem depender do
-simulador real (main.c ainda não aceita CLI, escalonadores ainda não
-existem).
+"""Valida o runner contra o binário fake, isolado do custo do simulador real.
 
 Cobre: log de falhas com todos os campos exigidos (seed, cenário,
 algoritmo, stderr, código de saída), e reexecução em modo "só o que
@@ -150,7 +148,8 @@ def test_force_fail_flag_also_produces_a_controlled_failure() -> None:
     # diretamente contra o binario fake (sem passar pelo runner).
     result = subprocess.run(
         [
-            str(FAKE_SIMULATOR), "--scenario", "balanced", "--algorithm", "fcfs",
+            sys.executable, str(FAKE_SIMULATOR),
+            "--scenario", "balanced", "--algorithm", "fcfs",
             "--seed", "1", "--processes", "100", "--force-fail",
         ],
         capture_output=True, text=True,

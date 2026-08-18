@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 """Automação dos experimentos principais: cenário x seed x algoritmo.
 
-Estrutura do pipeline, isolada do binário real: `main.c` ainda não faz
-parsing de CLI e os escalonadores (fcfs/rr/priority/proposed) ainda não
-existem, então este runner é escrito e testado contra
-`scripts/fake_simulator.py` (veja `tests/test_run_experiments.py`). Quando
-o binário real aceitar `--scenario/--seed/--algorithm/--processes`, basta
-apontar `--binary` para ele -- nenhuma lógica daqui muda.
+O binário real aceita `--scenario/--seed/--algorithm/--processes`; este runner
+monta essa linha de comando para cada combinação. A orquestração continua sendo
+testada isoladamente contra `scripts/fake_simulator.py`, enquanto
+`tests/test_main_cli.py` valida a mesma interface no simulador real.
 
 Não calcula estatística nem gera gráficos (isso já existe em
 `scripts/stats.py` e `scripts/plots.py`); a única responsabilidade deste
@@ -114,8 +112,12 @@ def missing_combinations(
 def build_command(
     binary: str | Path, combination: Combination, process_count: int,
 ) -> list[str]:
-    return [
-        str(binary),
+    binary_path = Path(binary)
+    command = [str(binary_path)]
+    if binary_path.suffix.lower() == ".py":
+        command.insert(0, sys.executable)
+
+    return command + [
         "--scenario", combination.scenario,
         "--algorithm", combination.algorithm,
         "--seed", str(combination.seed),
