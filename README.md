@@ -120,6 +120,14 @@ gráficos obrigatórios:
 python scripts/analyze_results.py
 ```
 
+Os resultados consolidados da execução principal já estão versionados em
+[`results/experiments/summary.csv`](results/experiments/summary.csv), junto aos
+gráficos finais de [turnaround médio](results/experiments/plots/turnaround_medio.png),
+[trocas de contexto](results/experiments/plots/trocas_contexto.png) e
+[índice de Jain](results/experiments/plots/jain_slowdown.png). Os CSVs brutos
+das 1.600 execuções permanecem ignorados porque podem ser reproduzidos pelos
+comandos acima.
+
 Limpeza:
 
 ```bash

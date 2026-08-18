@@ -8,7 +8,13 @@ results/*.csv
 results/*.png
 results/*.pdf
 results/*.svg
-results/experiments/
+# Experimentos brutos são reprodutíveis e não devem inflar o repositório.
+# O resumo e os gráficos finais, porém, fazem parte da entrega.
+results/experiments/*
+!results/experiments/summary.csv
+!results/experiments/plots/
+results/experiments/plots/*
+!results/experiments/plots/*.png
 !results/.gitkeep
 
 # Python

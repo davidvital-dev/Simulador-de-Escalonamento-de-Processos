@@ -2,13 +2,10 @@
 """Gráficos comparativos das métricas agregadas por cenário e algoritmo.
 
 Módulo isolado, sem I/O de CSV nem orquestração de experimentos: recebe a
-tabela consolidada que `scripts.stats.summarize_table` já produz (hoje a
-partir de dados fictícios, depois a partir do CSV real exportado pelo
-simulador) e gera um gráfico de barras por métrica, comparando os quatro
+tabela consolidada que `scripts.stats.summarize_table` produz e gera um
+gráfico de barras por métrica, comparando os quatro
 algoritmos obrigatórios dentro de cada um dos quatro cenários obrigatórios,
-com barra de erro representando o IC95%. Isso ainda não lê arquivos nem
-executa o simulador -- fica para scripts/run_experiments.py e
-scripts/analyze_results.py, que dependem do pipeline de outros integrantes.
+com barra de erro representando o IC95%.
 
 Paleta categórica (fcfs, rr, priority, proposed) validada com a skill de
 dataviz do projeto para o par adjacente usado em gráficos de barra: veja
@@ -30,6 +27,20 @@ from matplotlib.figure import Figure  # noqa: E402
 SCENARIO_ORDER = ("balanced", "io-bound", "cpu-bound", "priority-imbalanced")
 ALGORITHM_ORDER = ("fcfs", "rr", "priority", "proposed")
 
+SCENARIO_LABELS = {
+    "balanced": "Equilibrado",
+    "io-bound": "Orientado a I/O",
+    "cpu-bound": "Orientado a CPU",
+    "priority-imbalanced": "Prioridades\ndesbalanceadas",
+}
+
+ALGORITHM_LABELS = {
+    "fcfs": "FCFS",
+    "rr": "Round Robin",
+    "priority": "Prioridade",
+    "proposed": "AHR (proposto)",
+}
+
 # Slots 1-4 da paleta categórica validada (blue, orange, aqua, yellow),
 # em ordem fixa por algoritmo -- nunca atribuída por rank ou ciclada.
 ALGORITHM_COLORS = {
@@ -48,19 +59,30 @@ METRIC_INFO = {
     "turnaround_medio": {
         "label": "Turnaround médio",
         "unit": "ticks",
-        "value_format": "%.1f",
+        "scale": 1.0,
     },
     "trocas_contexto": {
         "label": "Trocas de contexto",
         "unit": "contagem",
-        "value_format": "%.0f",
+        "scale": 1.0,
     },
     "jain_slowdown": {
         "label": "Índice de Jain do slowdown",
-        "unit": "0-1",
-        "value_format": "%.2f",
+        "unit": "%",
+        "scale": 100.0,
     },
 }
+
+
+def _format_value(metric: str, value: float) -> str:
+    """Formata rótulos compactos, legíveis e coerentes com o eixo."""
+    if metric == "jain_slowdown":
+        return f"{value:.1f}%".replace(".", ",")
+    if abs(value) >= 1000:
+        return f"{value / 1000:.1f} mil".replace(".", ",")
+    if metric == "trocas_contexto":
+        return f"{value:.0f}"
+    return f"{value:.1f}".replace(".", ",")
 
 
 def build_metric_figure(
@@ -96,8 +118,18 @@ def build_metric_figure(
         if row["metrica"] == metric
     }
 
-    figure, axis = plt.subplots(figsize=(9, 5), facecolor=CHART_SURFACE)
+    figure, axis = plt.subplots(figsize=(10, 5.6), facecolor=CHART_SURFACE)
     axis.set_facecolor(CHART_SURFACE)
+
+    sample_sizes = {
+        int(row["n"])
+        for row in table
+        if row["metrica"] == metric and row.get("n") is not None
+    }
+    if len(sample_sizes) == 1:
+        sample_note = f"n={sample_sizes.pop()} sementes por combinação"
+    else:
+        sample_note = "n varia por combinação"
 
     group_positions = range(len(scenario_order))
     group_width = 0.8
@@ -118,11 +150,16 @@ def build_metric_figure(
                 labels.append("")
                 continue
 
-            mean = float(row["media"])
+            scale = float(info["scale"])
+            mean = float(row["media"]) * scale
             means.append(mean)
-            lower_errors.append(max(mean - float(row["ic95_inferior"]), 0.0))
-            upper_errors.append(max(float(row["ic95_superior"]) - mean, 0.0))
-            labels.append(info["value_format"] % mean)
+            lower_errors.append(
+                max(mean - float(row["ic95_inferior"]) * scale, 0.0)
+            )
+            upper_errors.append(
+                max(float(row["ic95_superior"]) * scale - mean, 0.0)
+            )
+            labels.append(_format_value(metric, mean))
 
         offsets = [
             position - group_width / 2 + bar_width * (algorithm_index + 0.5)
@@ -133,26 +170,36 @@ def build_metric_figure(
             means,
             width=bar_width * 0.85,
             yerr=[lower_errors, upper_errors],
-            capsize=3,
-            label=algorithm,
+            capsize=5,
+            label=ALGORITHM_LABELS.get(algorithm, algorithm),
             color=ALGORITHM_COLORS.get(algorithm, INK_SECONDARY),
             edgecolor=INK_PRIMARY,
             linewidth=0.6,
+            error_kw={
+                "elinewidth": 1.4,
+                "capthick": 1.4,
+                "ecolor": INK_PRIMARY,
+            },
             zorder=3,
         )
         # Rotulo de valor visivel sobre cada barra: mitiga o contraste
         # baixo das cores "aqua"/"yellow" contra a superficie clara
         # (regra de alivio da paleta validada) e facilita a leitura exata.
-        axis.bar_label(bars, labels=labels, padding=2, fontsize=7,
+        # Alterna a altura dos rótulos entre séries adjacentes. Isso evita
+        # sobreposição quando algoritmos têm médias iguais ou muito próximas.
+        label_padding = 3 + (algorithm_index % 2) * 10
+        axis.bar_label(bars, labels=labels, padding=label_padding, fontsize=7.5,
                        color=INK_SECONDARY)
 
     axis.set_xticks(list(group_positions))
-    axis.set_xticklabels(scenario_order)
+    axis.set_xticklabels([
+        SCENARIO_LABELS.get(scenario, scenario) for scenario in scenario_order
+    ])
     axis.set_xlabel("Cenário")
     axis.set_ylabel(f"{info['label']} ({info['unit']})")
     axis.set_title(
         f"{info['label']} por algoritmo e cenário\n"
-        "(barra de erro: intervalo de confiança de 95%)"
+        f"Média e IC95% · {sample_note}"
     )
     # Fora da area de plotagem, a direita: posicao fixa que nunca sobrepoe
     # barras, independente da faixa de valores de cada metrica (evita
@@ -167,6 +214,13 @@ def build_metric_figure(
     axis.tick_params(colors=INK_SECONDARY)
     axis.grid(axis="y", color=GRID_COLOR, linewidth=0.8, zorder=0)
     axis.set_axisbelow(True)
+    axis.set_ylim(bottom=0)
+    if metric == "jain_slowdown":
+        axis.set_ylim(0, 105)
+    else:
+        # Reserva espaço acima das barras para rótulos e IC95%, sem invadir
+        # o subtítulo quando uma série domina a escala (caso típico do RR).
+        axis.set_ylim(0, axis.dataLim.ymax * 1.15 if axis.dataLim.ymax else 1)
 
     figure.tight_layout()
     return figure
